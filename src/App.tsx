@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AssetProvider } from './context/AssetContext';
+import { AssetProvider, useAsset } from './context/AssetContext';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
@@ -12,13 +12,14 @@ import { ProcurementManager } from './components/ProcurementManager';
 import { StockOpname } from './components/StockOpname';
 import { ReportsManager } from './components/ReportsManager';
 import { HistoryLogView } from './components/HistoryLogView';
-import { IntegrationPanel } from './components/IntegrationPanel';
 import { AssetFormModal } from './components/AssetFormModal';
 import { ACServiceScanModal } from './components/ACServiceScanModal';
 import { LoginModal } from './components/LoginModal';
+import { LoginPage } from './components/LoginPage';
 import { Asset, UnitName } from './types';
 
 function MainApp() {
+  const { currentUser } = useAsset();
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -42,6 +43,23 @@ function MainApp() {
     setScannerOpen(false);
     setSelectedAssetId(assetId);
   };
+
+  if (!currentUser) {
+    return (
+      <div className="relative min-h-screen bg-slate-950">
+        <LoginPage onOpenACServiceModal={() => setAcServiceScanOpen(true)} />
+
+        {acServiceScanOpen && (
+          <ACServiceScanModal
+            onClose={() => setAcServiceScanOpen(false)}
+            onSelectACSuccess={(assetId) => {
+              setAcServiceScanOpen(false);
+            }}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen w-full bg-slate-50 flex overflow-hidden font-sans text-slate-900">
@@ -98,8 +116,6 @@ function MainApp() {
           {activeTab === 'reports' && <ReportsManager />}
 
           {activeTab === 'history' && <HistoryLogView />}
-
-          {activeTab === 'integrations' && <IntegrationPanel />}
         </main>
 
       </div>

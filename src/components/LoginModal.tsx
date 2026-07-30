@@ -13,7 +13,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
 
   const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
-  const [selectedRole, setSelectedRole] = useState<UserRole>('Admin FM');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -25,11 +24,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
     setSuccessMsg(null);
 
     if (!emailInput.trim()) {
-      setErrorMsg('Masukkan alamat email Anda!');
+      setErrorMsg('Masukkan alamat email atau username Anda!');
       return;
     }
 
-    const res = loginWithEmail(emailInput, passwordInput, selectedRole);
+    const res = loginWithEmail(emailInput, passwordInput);
     if (res.success) {
       setSuccessMsg(res.message);
       setTimeout(() => {
@@ -44,8 +43,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
   const handleQuickLogin = (usr: typeof users[0]) => {
     setEmailInput(usr.email);
     setPasswordInput(usr.password || '123');
-    setSelectedRole(usr.role);
-    const res = loginWithEmail(usr.email, usr.password || '123', usr.role);
+    const res = loginWithEmail(usr.email, usr.password || '123');
     if (res.success) {
       setSuccessMsg(`Berhasil login sebagai ${usr.name} (${usr.role})`);
       setTimeout(() => {
@@ -143,38 +141,20 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-slate-700 font-black mb-1">
-                  Password (Opsional)
-                </label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="password"
-                    value={passwordInput}
-                    onChange={(e) => setPasswordInput(e.target.value)}
-                    placeholder="Default: 123"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all text-xs"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-black mb-1">
-                  Pilih Role (Jika Email Baru)
-                </label>
-                <select
-                  value={selectedRole}
-                  onChange={(e) => setSelectedRole(e.target.value as UserRole)}
-                  className="w-full py-2.5 px-3 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600"
-                >
-                  <option value="Admin FM">Admin FM (Full Controller)</option>
-                  <option value="Maintenance">Maintenance (Teknisi FM)</option>
-                  <option value="Vendor AC (Tukang Service)">Vendor AC (Tukang Service)</option>
-                  <option value="Kepala Unit">Kepala Unit (SD/TK/SMP/GA)</option>
-                  <option value="User">User Staff General</option>
-                </select>
+            <div>
+              <label className="block text-slate-700 font-black mb-1">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="password"
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  placeholder="Masukkan password..."
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all text-xs"
+                  required
+                />
               </div>
             </div>
 
@@ -191,44 +171,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
           <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-2xl flex items-center gap-2.5">
             <FileSpreadsheet className="w-5 h-5 text-emerald-600 shrink-0" />
             <p className="text-[11px] text-blue-950 font-medium leading-tight">
-              <strong>Database Single Source:</strong> Aplikasi ini menggunakan <strong>Google Sheets Direct API</strong> sebagai basis data cloud utama (tanpa Firebase).
+              <strong>Database Single Source:</strong> Aplikasi ini menggunakan <strong>Google Sheets Direct API</strong> sebagai basis data cloud utama.
             </p>
-          </div>
-
-          {/* Quick Select Preset Email Accounts */}
-          <div className="pt-3 border-t border-slate-200 space-y-2.5">
-            <label className="block text-slate-500 font-black uppercase text-[10px] tracking-wider flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-amber-500" />
-              <span>Pilih Email Terdaftar (Quick Demo Login)</span>
-            </label>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {users.map((u) => (
-                <button
-                  key={u.id}
-                  type="button"
-                  onClick={() => handleQuickLogin(u)}
-                  className={`p-2.5 rounded-2xl border text-left transition-all flex items-center justify-between hover:scale-[1.01] ${
-                    currentUser?.id === u.id
-                      ? 'border-blue-600 bg-blue-50/80 ring-2 ring-blue-500/20'
-                      : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-xl bg-slate-800 text-white font-black text-[10px] flex items-center justify-center shrink-0">
-                      {u.name.substring(0, 2).toUpperCase()}
-                    </div>
-                    <div className="overflow-hidden">
-                      <p className="font-extrabold text-slate-900 text-[11px] leading-tight truncate">{u.name}</p>
-                      <p className="text-[10px] text-blue-700 font-medium truncate">{u.email}</p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] bg-slate-200 border border-slate-300 px-1.5 py-0.5 rounded font-mono font-bold text-slate-700 shrink-0 ml-1">
-                    {u.role.split(' ')[0]}
-                  </span>
-                </button>
-              ))}
-            </div>
           </div>
 
         </div>

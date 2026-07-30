@@ -40,8 +40,6 @@ export const MasterDataModal: React.FC = () => {
   // Add unit modal form
   const [showUnitForm, setShowUnitForm] = useState(false);
   const [newUnitNama, setNewUnitNama] = useState<UnitName>('TK');
-  const [newKepalaUnit, setNewKepalaUnit] = useState('');
-  const [newPicAsset, setNewPicAsset] = useState('');
 
   // Add gedung modal form
   const [showGedungForm, setShowGedungForm] = useState(false);
@@ -71,13 +69,11 @@ export const MasterDataModal: React.FC = () => {
     e.preventDefault();
     addUnit({
       nama: newUnitNama,
-      kepalaUnit: newKepalaUnit || 'Kepala Unit',
-      picAsset: newPicAsset || 'PIC Asset',
+      kepalaUnit: 'Tim Facility Management (FM)',
+      picAsset: 'Tim Facility Management (FM)',
       lokasiGedung: ['Ibnu Khaldun'],
     });
     setShowUnitForm(false);
-    setNewKepalaUnit('');
-    setNewPicAsset('');
   };
 
   const handleCreateGedung = (e: React.FormEvent) => {
@@ -466,12 +462,8 @@ export const MasterDataModal: React.FC = () => {
 
                 <div className="space-y-1.5 text-xs text-slate-600">
                   <div className="flex items-center gap-2">
-                    <User className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Kepala Unit: <strong className="text-slate-800">{unit.kepalaUnit}</strong></span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>PIC Asset: <strong className="text-slate-800">{unit.picAsset}</strong></span>
+                    <Shield className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Penanggung Jawab: <strong className="text-slate-800">Tim Facility Management (FM)</strong></span>
                   </div>
                 </div>
 
@@ -713,34 +705,18 @@ export const MasterDataModal: React.FC = () => {
             <h3 className="text-base font-extrabold text-slate-900">Tambah Master Unit</h3>
             <form onSubmit={handleCreateUnit} className="space-y-3 text-xs">
               <div>
-                <label className="block text-slate-600 font-medium mb-1">Nama Unit</label>
+                <label className="block text-slate-600 font-medium mb-1">Nama Unit Sekolah / Departemen</label>
                 <input
                   type="text"
                   value={newUnitNama}
                   onChange={(e) => setNewUnitNama(e.target.value as any)}
+                  placeholder="e.g. SMA, Lab, Perpustakaan..."
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium"
                   required
                 />
               </div>
-              <div>
-                <label className="block text-slate-600 font-medium mb-1">Kepala Unit</label>
-                <input
-                  type="text"
-                  value={newKepalaUnit}
-                  onChange={(e) => setNewKepalaUnit(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-slate-600 font-medium mb-1">PIC Asset Unit</label>
-                <input
-                  type="text"
-                  value={newPicAsset}
-                  onChange={(e) => setNewPicAsset(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium"
-                  required
-                />
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-900 text-[11px]">
+                Seluruh pengelolaan & penanggung jawab aset unit sekolah berada di bawah wewenang <strong>Tim Facility Management (FM)</strong>.
               </div>
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button

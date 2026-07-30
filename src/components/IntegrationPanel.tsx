@@ -41,7 +41,7 @@ export const IntegrationPanel: React.FC = () => {
   const [creatingSheet, setCreatingSheet] = useState(false);
 
   const [spreadsheetIdInput, setSpreadsheetIdInput] = useState(
-    integrationConfig.googleSheetsUrl || '1_lazuardi_gcs_assets_master'
+    integrationConfig.googleSheetsUrl || 'https://docs.google.com/spreadsheets/d/15OEBPfr-Q9SXU7HPImwOXjCRbk2u4DBlyyOWa7B2AyE/edit?usp=sharing'
   );
 
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
@@ -465,18 +465,115 @@ export const IntegrationPanel: React.FC = () => {
                 <Database className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-extrabold text-slate-900 text-sm">Google Sheets Single Cloud Database</h3>
-                <p className="text-xs text-slate-500">Database cloud terpusat tanpa ketergantungan Firebase</p>
+                <h3 className="font-extrabold text-slate-900 text-sm">Google Sheets Single Cloud Database (100% No Firebase)</h3>
+                <p className="text-xs text-slate-500">Database terhubung langsung ke Google Sheets target Anda</p>
               </div>
             </div>
             <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">
-              Google Sheets Active
+              Active Google Sheet DB
             </span>
           </div>
 
-          <p className="text-xs text-slate-600 leading-relaxed">
-            Seluruh data Aset, WO, History Maintenance, dan User disimpan secara terstruktur di <strong>Google Sheets Spreadsheet</strong> dan ter-cache di local storage browser pengguna secara otomatis.
-          </p>
+          <div className="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-200 text-emerald-950 text-xs space-y-2.5">
+            <div className="flex items-center justify-between">
+              <p className="font-bold flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Spreadsheet Master Database:</span>
+              </p>
+              <a
+                href={integrationConfig.googleSheetsUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] rounded-lg flex items-center gap-1 shadow-xs transition-all"
+              >
+                <span>Buka Google Sheets</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+            <p className="font-mono text-[11px] bg-white p-2 rounded-xl border border-emerald-200 break-all text-slate-800">
+              {integrationConfig.googleSheetsUrl}
+            </p>
+
+            <div className="pt-2 border-t border-emerald-200/80 flex items-center justify-between">
+              <div>
+                <p className="font-bold text-[11px] text-emerald-900 flex items-center gap-1">
+                  <Cloud className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Folder Google Drive Penyimpanan Foto Aset:</span>
+                </p>
+                <p className="font-mono text-[10px] text-slate-600 truncate max-w-[280px]">
+                  {integrationConfig.googleDriveFolderUrl}
+                </p>
+              </div>
+              <a
+                href={integrationConfig.googleDriveFolderUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-[10px] rounded-lg flex items-center gap-1 shadow-xs transition-all shrink-0"
+              >
+                <span>Buka Folder Drive</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          </div>
+
+          {/* Apps Script Guide */}
+          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                <span>Apakah perlu Google Apps Script?</span>
+              </h4>
+              <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full">
+                Opsional / Rekomendasi
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              <strong>Jawabannya: TIDAK WAJIB.</strong> Aplikasi ini sudah dapat membaca & menyimpan data langsung ke Google Sheets via direct REST / Client Sync. Namun, jika Anda memasang <strong>Google Apps Script (Web App)</strong> di spreadsheet tersebut, Anda akan mendapatkan keuntungan:
+            </p>
+
+            <ul className="list-disc pl-5 text-xs text-slate-700 space-y-1 font-medium">
+              <li><strong>Zero Authentication Limit:</strong> Siapa saja di internal Lazuardi/Teknisi bisa sync tanpa kendala domain popup.</li>
+              <li><strong>Auto Sync Real-time:</strong> Setiap penambahan Aset atau Service AC langsung masuk ke tab Sheet tanpa Firebase.</li>
+              <li><strong>100% Gratis & Selamanya:</strong> Tanpa biaya server backend.</li>
+            </ul>
+
+            <div className="pt-2 border-t border-slate-200 space-y-2">
+              <label className="block text-[11px] font-bold text-slate-700">
+                Kode Apps Script Siap Pakai (Buka Sheet ID 15OEBPfr... &gt; Extensions &gt; Apps Script):
+              </label>
+              <pre className="p-3 bg-slate-900 text-emerald-400 font-mono text-[10px] rounded-xl overflow-x-auto select-all max-h-36">
+{`function doGet(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('Daftar Aset');
+  if(!sheet) return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
+  var data = sheet.getDataRange().getValues();
+  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  var data = JSON.parse(e.postData.contents);
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('Daftar Aset') || ss.insertSheet('Daftar Aset');
+  sheet.clear();
+  data.forEach(function(row) { sheet.appendRow(row); });
+  return ContentService.createTextOutput(JSON.stringify({status: 'success'})).setMimeType(ContentService.MimeType.JSON);
+}`}
+              </pre>
+            </div>
+
+            <div className="space-y-1 pt-1">
+              <label className="block text-xs font-bold text-slate-700">
+                URL Apps Script Web App (Jika Sudah Deploy Web App):
+              </label>
+              <input
+                type="text"
+                value={integrationConfig.appScriptWebAppUrl || ''}
+                onChange={(e) => setIntegrationConfig((p) => ({ ...p, appScriptWebAppUrl: e.target.value }))}
+                placeholder="https://script.google.com/macros/s/.../exec"
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-800 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+          </div>
 
           <button
             onClick={() => handleSimulateSync('Google Sheets Database')}

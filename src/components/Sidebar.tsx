@@ -7,7 +7,6 @@ import {
   ClipboardCheck,
   FileText,
   History,
-  Share2,
 } from 'lucide-react';
 import { useAsset } from '../context/AssetContext';
 
@@ -17,7 +16,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
-  const { currentRole } = useAsset();
+  const { currentRole, currentUser } = useAsset();
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -27,7 +26,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
     { id: 'stock_opname', label: 'Stock Opname', icon: ClipboardCheck },
     { id: 'reports', label: 'Reports & Export', icon: FileText },
     { id: 'history', label: 'Activity Logs', icon: History },
-    { id: 'integrations', label: 'System Integration', icon: Share2 },
   ];
 
   return (
@@ -77,10 +75,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
       <div className="mt-auto p-6 pt-0">
         <div className="flex items-center gap-3 bg-slate-800 p-3 rounded-xl border border-slate-700/80">
           <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-white text-xs shrink-0 shadow-sm">
-            AR
+            {currentUser ? currentUser.name.substring(0, 2).toUpperCase() : 'US'}
           </div>
           <div className="overflow-hidden">
-            <p className="text-xs font-bold text-white truncate">Alpian Rinaldhi</p>
+            <p className="text-xs font-bold text-white truncate">{currentUser ? currentUser.name : 'Pengguna App'}</p>
             <p className="text-[10px] text-slate-400 truncate">{currentRole}</p>
           </div>
         </div>
@@ -88,4 +86,5 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
     </aside>
   );
 };
+
 

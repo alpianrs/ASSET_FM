@@ -24,6 +24,9 @@ import {
   CheckCircle2,
   Share2,
   Plus,
+  ExternalLink,
+  Link2,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 interface AssetDetailModalProps {
@@ -364,8 +367,36 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
               
               {/* Photo & QR Preview */}
               <div className="space-y-4">
-                <div className="rounded-2xl overflow-hidden border border-slate-200 aspect-video bg-slate-100 shadow-sm">
+                <div className="rounded-2xl overflow-hidden border border-slate-200 aspect-video bg-slate-100 shadow-sm relative group">
                   <img src={asset.fotoUrl} alt={asset.namaAsset} className="w-full h-full object-cover" />
+                  <a
+                    href={asset.fotoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="absolute bottom-2 right-2 px-2.5 py-1.5 bg-slate-900/80 hover:bg-slate-900 text-white rounded-xl text-[10px] font-bold backdrop-blur-xs flex items-center gap-1.5 shadow-md transition-all"
+                  >
+                    <ExternalLink className="w-3 h-3 text-emerald-400" />
+                    <span>Buka Google Drive</span>
+                  </a>
+                </div>
+
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-2xl flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <div className="overflow-hidden">
+                      <p className="text-[10px] font-extrabold text-blue-900 uppercase">Google Sheets Link</p>
+                      <p className="text-[11px] font-mono text-slate-700 truncate">{asset.fotoUrl}</p>
+                    </div>
+                  </div>
+                  <a
+                    href={asset.fotoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-1.5 bg-white border border-blue-200 text-blue-700 hover:bg-blue-100 rounded-lg shrink-0"
+                    title="Buka Link Google Drive"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">

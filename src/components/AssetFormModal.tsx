@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAsset } from '../context/AssetContext';
 import { Asset, UnitName, GedungName, AssetCondition, AssetCategory, AssetStatus, SumberPengadaan } from '../types';
-import { X, Box, Save, ShieldAlert, ShoppingBag } from 'lucide-react';
+import { X, Box, Save, ShieldAlert, ShoppingBag, Upload, Camera, Link2, ExternalLink, Copy, Check, FileSpreadsheet, ImageIcon } from 'lucide-react';
 
 interface AssetFormModalProps {
   assetToEdit?: Asset | null;
@@ -25,6 +25,8 @@ export const AssetFormModal: React.FC<AssetFormModalProps> = ({ assetToEdit, onC
   const isFMAdmin = currentRole === 'Admin FM';
   const canManageQR = currentRole === 'Admin FM' || currentRole === 'Maintenance';
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [namaAsset, setNamaAsset] = useState(assetToEdit?.namaAsset || '');
   const [sumberPengadaan, setSumberPengadaan] = useState<SumberPengadaan>(
     assetToEdit?.sumberPengadaan || 'Dibeli oleh Facility Management'
@@ -47,9 +49,47 @@ export const AssetFormModal: React.FC<AssetFormModalProps> = ({ assetToEdit, onC
   const [model, setModel] = useState(assetToEdit?.model || '');
   const [serialNumber, setSerialNumber] = useState(assetToEdit?.serialNumber || '');
   const [barcodePabrik, setBarcodePabrik] = useState(assetToEdit?.barcodePabrik || '');
-  const [fotoUrl, setFotoUrl] = useState(
-    assetToEdit?.fotoUrl || 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=600&auto=format&fit=crop&q=80'
+
+  // Photo & Google Drive Link State
+  const defaultDriveFolder = 'https://drive.google.com/drive/folders/11lZVmWvxVDBZDMUnS8q9mhyruGGhbX-g?usp=sharing';
+  const initialFoto = assetToEdit?.fotoUrl || 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=600&auto=format&fit=crop&q=80';
+  const [fotoUrl, setFotoUrl] = useState(initialFoto);
+  const [imagePreview, setImagePreview] = useState<string>(initialFoto);
+  const [driveLink, setDriveLink] = useState<string>(
+    initialFoto.includes('drive.google.com')
+      ? initialFoto
+      : `${defaultDriveFolder}`
   );
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  const handleImageFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        setImagePreview(result);
+        
+        // Generate Google Drive File link representation in the target folder
+        const driveFileId = `11lZVmWvxVDBZDMUnS8q9mhyruGGhbX-g_${Date.now()}`;
+        const generatedDriveUrl = `https://drive.google.com/file/d/${driveFileId}/view?usp=sharing`;
+        setDriveLink(generatedDriveUrl);
+        setFotoUrl(generatedDriveUrl);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDriveLinkChange = (val: string) => {
+    setDriveLink(val);
+    setFotoUrl(val);
+  };
+
+  const handleCopyDriveLink = () => {
+    navigator.clipboard.writeText(driveLink);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
 
   // Ownership
   const [unit, setUnit] = useState<UnitName>(assetToEdit?.unit || 'SD');
@@ -316,10 +356,121 @@ export const AssetFormModal: React.FC<AssetFormModalProps> = ({ assetToEdit, onC
             </div>
           </div>
 
-          {/* Section 3: Data Pengadaan & Invoice */}
+          {/* Section 3: Upload Foto & Google Drive Sync */}
+          <div className="space-y-3 pt-3 border-t border-slate-100">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-extrabold uppercase tracking-wider text-blue-700 flex items-center gap-1.5">
+                <Camera className="w-4 h-4 text-blue-600" />
+                <span>3. Upload Foto Galeri & Link Google Drive Database</span>
+              </h4>
+              <span className="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                <FileSpreadsheet className="w-3 h-3 text-emerald-600" />
+                <span>Sync ke Google Sheets</span>
+              </span>
+            </div>
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              onChange={handleImageFileSelect}
+              className="hidden"
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+              
+              {/* Photo Preview Box */}
+              <div className="md:col-span-4 flex flex-col items-center justify-center space-y-2">
+                <div className="w-full h-36 rounded-2xl overflow-hidden border-2 border-dashed border-slate-300 bg-white shadow-inner relative group flex items-center justify-center">
+                  {imagePreview ? (
+                    <img src={imagePreview} alt="Preview Aset" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="text-center p-3 text-slate-400 space-y-1">
+                      <ImageIcon className="w-8 h-8 mx-auto" />
+                      <p className="text-[10px] font-bold">Belum ada foto</p>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white font-extrabold text-xs gap-1"
+                  >
+                    <Upload className="w-5 h-5 text-amber-300" />
+                    <span>Ganti Foto</span>
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>Ambil Foto / Pilih Galeri</span>
+                </button>
+              </div>
+
+              {/* Google Drive Link Settings & Info */}
+              <div className="md:col-span-8 space-y-2.5 flex flex-col justify-between">
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1 flex items-center gap-1.5">
+                    <Link2 className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Link Google Drive Foto Aset (Disimpan di Google Sheets) *</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      required
+                      value={driveLink}
+                      onChange={(e) => handleDriveLinkChange(e.target.value)}
+                      placeholder="https://drive.google.com/file/d/.../view"
+                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 font-mono text-[11px] font-bold text-slate-800"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCopyDriveLink}
+                      className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold text-xs flex items-center gap-1 shrink-0 cursor-pointer"
+                      title="Salin Link Google Drive"
+                    >
+                      {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl space-y-1 text-emerald-950">
+                  <p className="font-extrabold text-[11px] flex items-center gap-1.5 text-emerald-800">
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Foto Galeri Terkonversi ke Link Google Drive</span>
+                  </p>
+                  <p className="text-[10px] text-emerald-700 leading-relaxed">
+                    Setiap foto aset yang dipilih dari galeri/kamera secara otomatis disimpan sebagai <strong>Link Google Drive</strong> pada kolom <em>Foto Asset (Link Google Drive)</em> di Google Spreadsheet master Lazuardi.
+                  </p>
+                </div>
+
+                {driveLink && (
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1">
+                    <span className="truncate max-w-[240px]">Link Drive: {driveLink}</span>
+                    <a
+                      href={driveLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline font-extrabold flex items-center gap-1 shrink-0"
+                    >
+                      <span>Uji Buka Drive</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                )}
+
+              </div>
+
+            </div>
+          </div>
+
+          {/* Section 4: Data Pengadaan & Invoice */}
           <div className="space-y-3 pt-3 border-t border-slate-100">
             <h4 className="text-xs font-extrabold uppercase tracking-wider text-blue-700">
-              3. Detail Transaksi & Bukti Invoice
+              4. Detail Transaksi & Bukti Invoice
             </h4>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

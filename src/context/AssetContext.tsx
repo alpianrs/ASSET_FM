@@ -21,6 +21,8 @@ import { INITIAL_ASSETS, INITIAL_GEDUNG, INITIAL_NOTIFICATIONS, INITIAL_UNITS, I
 
 interface IntegrationConfig {
   googleSheetsUrl: string;
+  googleDriveFolderUrl: string;
+  appScriptWebAppUrl?: string;
   firebaseEnabled: boolean;
   supabaseEnabled: boolean;
   accurateOnlineConnected: boolean;
@@ -157,9 +159,9 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_currentUser`);
       if (saved) return JSON.parse(saved);
-      return INITIAL_USERS[0]; // Default logged in as Alpian Rinaldhi (Admin FM)
+      return null;
     } catch {
-      return INITIAL_USERS[0];
+      return null;
     }
   });
 
@@ -175,15 +177,15 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [currentUser]);
 
-  const loginWithEmail = (inputEmail: string, inputPassword?: string, selectedRole?: UserRole) => {
+  const loginWithEmail = (inputEmail: string, inputPassword?: string, _overrideRole?: UserRole) => {
     const cleanEmail = inputEmail.trim().toLowerCase();
     const cleanPass = inputPassword ? inputPassword.trim() : '';
 
     if (!cleanEmail) {
-      return { success: false, message: 'Masukkan alamat email Anda!' };
+      return { success: false, message: 'Masukkan username atau email Anda!' };
     }
 
-    // Find user by email or username
+    // Find user by username, email, or name
     let matched = users.find(
       (u) =>
         u.email.toLowerCase() === cleanEmail ||
@@ -192,39 +194,24 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     );
 
     if (!matched) {
-      // Auto-register user with this email address so ANY email can log in freely
-      const emailNamePart = cleanEmail.includes('@') ? cleanEmail.split('@')[0] : cleanEmail;
-      const capitalizedName = emailNamePart.charAt(0).toUpperCase() + emailNamePart.slice(1);
-      const roleToAssign = selectedRole || 'User';
-
-      const newUser: UserAccount = {
-        id: `usr-${Date.now()}`,
-        name: `${capitalizedName} (Email User)`,
-        username: emailNamePart,
-        email: cleanEmail.includes('@') ? cleanEmail : `${cleanEmail}@email.com`,
-        password: cleanPass || '123',
-        role: roleToAssign,
-        unit: 'Semua',
-        status: 'Aktif',
-        lastActive: 'Baru Login',
-        permissions: getDefaultPermissionsByRole(roleToAssign),
+      return {
+        success: false,
+        message: 'Username/Email tidak terdaftar. Hubungi Admin FM untuk pendaftaran akun & role.',
       };
-
-      setUsers((prev) => [newUser, ...prev]);
-      matched = newUser;
-      addLog('Registrasi Email Auto', `Pengguna mendaftar & login dengan email: ${matched.email} (${roleToAssign})`);
-    } else {
-      if (matched.status === 'Non-aktif') {
-        return { success: false, message: 'Akun email Anda sedang non-aktif. Hubungi Admin FM.' };
-      }
-      if (matched.password && cleanPass && matched.password !== cleanPass) {
-        return { success: false, message: 'Password salah. Silakan coba lagi.' };
-      }
     }
 
+    if (matched.status === 'Non-aktif') {
+      return { success: false, message: 'Akun Anda sedang non-aktif. Hubungi Admin FM.' };
+    }
+
+    if (matched.password && cleanPass && matched.password !== cleanPass) {
+      return { success: false, message: 'Password salah. Silakan periksa kembali password Anda.' };
+    }
+
+    // Automatically use the role set by Admin for this user
     setCurrentUser(matched);
     setCurrentRole(matched.role);
-    addLog('Login Sistem', `Pengguna ${matched.name} (${matched.email}) berhasil login dengan Email.`);
+    addLog('Login Sistem', `Pengguna ${matched.name} (${matched.username}) berhasil login sebagai ${matched.role}.`);
     return { success: true, message: `Berhasil login sebagai ${matched.name} (${matched.role})` };
   };
 
@@ -236,7 +223,9 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const [integrationConfig, setIntegrationConfig] = useState<IntegrationConfig>({
-    googleSheetsUrl: 'https://docs.google.com/spreadsheets/d/1_lazuardi_gcs_assets_export',
+    googleSheetsUrl: 'https://docs.google.com/spreadsheets/d/15OEBPfr-Q9SXU7HPImwOXjCRbk2u4DBlyyOWa7B2AyE/edit?usp=sharing',
+    googleDriveFolderUrl: 'https://drive.google.com/drive/folders/11lZVmWvxVDBZDMUnS8q9mhyruGGhbX-g?usp=sharing',
+    appScriptWebAppUrl: 'https://script.google.com/macros/s/AKfycbxmnN_utcfV96wQB6xZAJGdrzaTFEZTduJrwdIiyPPyyff3j8Pxz1LxUOEB77KDVguU/exec',
     firebaseEnabled: false,
     supabaseEnabled: false,
     accurateOnlineConnected: true,

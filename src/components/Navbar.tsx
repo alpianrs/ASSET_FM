@@ -268,7 +268,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <div className="py-2">
               <div className="px-2.5 pb-1 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-                Simulasi Simulasi Role (Quick Switch)
+                Ganti Role / Hak Akses
               </div>
               {roles.map((r) => (
                 <button
@@ -370,17 +370,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             Activity Logs
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab('integrations');
-              setMobileMenuOpen(false);
-            }}
-            className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold ${
-              activeTab === 'integrations' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
-            }`}
-          >
-            System Integration
           </button>
         </div>
       )}
