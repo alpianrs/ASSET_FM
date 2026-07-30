@@ -1,0 +1,6 @@
+{
+  "name": "Lazuardi GCS Asset Management System",
+  "description": "Sistem Manajemen Aset Sekolah Lazuardi Global Compassionate School berbasis QR Code untuk Tim Facility Management",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
