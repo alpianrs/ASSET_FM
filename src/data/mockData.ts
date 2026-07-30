@@ -565,6 +565,8 @@ export const INITIAL_USERS: import('../types').UserAccount[] = [
   {
     id: 'usr-1',
     name: 'Alpian Rinaldhi',
+    username: 'alpian',
+    password: '123',
     email: 'Alpianrs@lazuardi.sch.id',
     role: 'Admin FM',
     unit: 'Facility Management',
@@ -576,6 +578,8 @@ export const INITIAL_USERS: import('../types').UserAccount[] = [
   {
     id: 'usr-2',
     name: 'Budi Santoso',
+    username: 'budi',
+    password: '123',
     email: 'budi.maintenance@lazuardi.sch.id',
     role: 'Maintenance',
     unit: 'Facility Management',
@@ -587,6 +591,8 @@ export const INITIAL_USERS: import('../types').UserAccount[] = [
   {
     id: 'usr-3',
     name: 'Fitri Handayani',
+    username: 'fitri',
+    password: '123',
     email: 'fitri.sd@lazuardi.sch.id',
     role: 'Kepala Unit',
     unit: 'SD',
@@ -598,6 +604,8 @@ export const INITIAL_USERS: import('../types').UserAccount[] = [
   {
     id: 'usr-4',
     name: 'Ahmad Tekno (Vendor CoolService AC)',
+    username: 'vendor',
+    password: '123',
     email: 'ahmad@coolservice.com',
     role: 'Vendor AC (Tukang Service)',
     unit: 'Semua',
@@ -609,6 +617,8 @@ export const INITIAL_USERS: import('../types').UserAccount[] = [
   {
     id: 'usr-5',
     name: 'Dedi Pratama',
+    username: 'dedi',
+    password: '123',
     email: 'dedi.ga@lazuardi.sch.id',
     role: 'User',
     unit: 'General Affair',

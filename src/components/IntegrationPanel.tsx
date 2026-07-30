@@ -306,7 +306,7 @@ export const IntegrationPanel: React.FC = () => {
                     <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.29C.47 8.21 0 10.05 0 12s.47 3.79 1.29 5.42l3.99-3.15z"/>
                     <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.58l3.99 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
                   </svg>
-                  <span>{isAuthenticating ? 'Menghubungkan...' : 'Login Google dengan Akun Lazuardi'}</span>
+                  <span>{isAuthenticating ? 'Menghubungkan...' : 'Login Akun Google (Google Sheets DB)'}</span>
                 </button>
               )}
             </div>
@@ -457,54 +457,34 @@ export const IntegrationPanel: React.FC = () => {
           </div>
         </div>
 
-        {/* Firebase & Supabase & PostgreSQL */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4">
+        {/* Google Sheets Database Engine (No Firebase) */}
+        <div className="bg-white p-6 rounded-3xl border border-emerald-200/80 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
                 <Database className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-extrabold text-slate-900 text-sm">Firebase / Supabase / PostgreSQL</h3>
-                <p className="text-xs text-slate-500">Database utama cloud terpusat & real-time sync</p>
+                <h3 className="font-extrabold text-slate-900 text-sm">Google Sheets Single Cloud Database</h3>
+                <p className="text-xs text-slate-500">Database cloud terpusat tanpa ketergantungan Firebase</p>
               </div>
             </div>
             <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">
-              Firestore Online
+              Google Sheets Active
             </span>
           </div>
 
-          <div className="space-y-2 text-xs">
-            <label className="block text-slate-600 font-semibold">Mode Backend Primary:</label>
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 font-medium">
-                <input
-                  type="checkbox"
-                  checked={integrationConfig.firebaseEnabled}
-                  onChange={(e) => setIntegrationConfig((p) => ({ ...p, firebaseEnabled: e.target.checked }))}
-                  className="rounded text-emerald-600"
-                />
-                Firebase Firestore
-              </label>
-              <label className="flex items-center gap-2 font-medium">
-                <input
-                  type="checkbox"
-                  checked={integrationConfig.supabaseEnabled}
-                  onChange={(e) => setIntegrationConfig((p) => ({ ...p, supabaseEnabled: e.target.checked }))}
-                  className="rounded text-emerald-600"
-                />
-                Supabase / PostgreSQL
-              </label>
-            </div>
-          </div>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Seluruh data Aset, WO, History Maintenance, dan User disimpan secara terstruktur di <strong>Google Sheets Spreadsheet</strong> dan ter-cache di local storage browser pengguna secara otomatis.
+          </p>
 
           <button
-            onClick={() => handleSimulateSync('Firebase Firestore & PostgreSQL')}
-            disabled={syncing === 'Firebase Firestore & PostgreSQL'}
-            className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
+            onClick={() => handleSimulateSync('Google Sheets Database')}
+            disabled={syncing === 'Google Sheets Database'}
+            className="w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2"
           >
-            <RefreshCw className={`w-4 h-4 ${syncing === 'Firebase Firestore & PostgreSQL' ? 'animate-spin' : ''}`} />
-            <span>Tes Koneksi Database Cloud</span>
+            <RefreshCw className={`w-4 h-4 ${syncing === 'Google Sheets Database' ? 'animate-spin' : ''}`} />
+            <span>Tes Koneksi Google Sheets DB</span>
           </button>
         </div>
 

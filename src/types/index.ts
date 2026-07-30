@@ -13,6 +13,8 @@ export interface UserPermissions {
 export interface UserAccount {
   id: string;
   name: string;
+  username: string;
+  password?: string;
   email: string;
   role: UserRole;
   unit: UnitName | 'Facility Management' | 'Semua';

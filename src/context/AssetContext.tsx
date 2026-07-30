@@ -37,6 +37,9 @@ interface AssetContextType {
   maintenanceLogs: MaintenanceLog[];
   currentRole: UserRole;
   setCurrentRole: (role: UserRole) => void;
+  currentUser: UserAccount | null;
+  loginWithEmail: (email: string, password?: string, role?: UserRole) => { success: boolean; message: string };
+  logoutUser: () => void;
   users: UserAccount[];
   addUser: (user: Omit<UserAccount, 'id' | 'permissions'> & { permissions?: UserAccount['permissions'] }) => void;
   updateUserRole: (userId: string, newRole: UserRole, newPermissions?: UserAccount['permissions'], newUnit?: UserAccount['unit']) => void;
@@ -141,8 +144,6 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return initialWos;
   });
 
-  const [currentRole, setCurrentRole] = useState<UserRole>('Admin FM');
-
   const [users, setUsers] = useState<UserAccount[]>(() => {
     try {
       const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_users`);
@@ -152,9 +153,91 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   });
 
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
+    try {
+      const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_currentUser`);
+      if (saved) return JSON.parse(saved);
+      return INITIAL_USERS[0]; // Default logged in as Alpian Rinaldhi (Admin FM)
+    } catch {
+      return INITIAL_USERS[0];
+    }
+  });
+
+  const [currentRole, setCurrentRole] = useState<UserRole>(() => {
+    return currentUser ? currentUser.role : 'Admin FM';
+  });
+
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_currentUser`, JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem(`${LOCAL_STORAGE_KEY}_currentUser`);
+    }
+  }, [currentUser]);
+
+  const loginWithEmail = (inputEmail: string, inputPassword?: string, selectedRole?: UserRole) => {
+    const cleanEmail = inputEmail.trim().toLowerCase();
+    const cleanPass = inputPassword ? inputPassword.trim() : '';
+
+    if (!cleanEmail) {
+      return { success: false, message: 'Masukkan alamat email Anda!' };
+    }
+
+    // Find user by email or username
+    let matched = users.find(
+      (u) =>
+        u.email.toLowerCase() === cleanEmail ||
+        u.username.toLowerCase() === cleanEmail ||
+        u.name.toLowerCase() === cleanEmail
+    );
+
+    if (!matched) {
+      // Auto-register user with this email address so ANY email can log in freely
+      const emailNamePart = cleanEmail.includes('@') ? cleanEmail.split('@')[0] : cleanEmail;
+      const capitalizedName = emailNamePart.charAt(0).toUpperCase() + emailNamePart.slice(1);
+      const roleToAssign = selectedRole || 'User';
+
+      const newUser: UserAccount = {
+        id: `usr-${Date.now()}`,
+        name: `${capitalizedName} (Email User)`,
+        username: emailNamePart,
+        email: cleanEmail.includes('@') ? cleanEmail : `${cleanEmail}@email.com`,
+        password: cleanPass || '123',
+        role: roleToAssign,
+        unit: 'Semua',
+        status: 'Aktif',
+        lastActive: 'Baru Login',
+        permissions: getDefaultPermissionsByRole(roleToAssign),
+      };
+
+      setUsers((prev) => [newUser, ...prev]);
+      matched = newUser;
+      addLog('Registrasi Email Auto', `Pengguna mendaftar & login dengan email: ${matched.email} (${roleToAssign})`);
+    } else {
+      if (matched.status === 'Non-aktif') {
+        return { success: false, message: 'Akun email Anda sedang non-aktif. Hubungi Admin FM.' };
+      }
+      if (matched.password && cleanPass && matched.password !== cleanPass) {
+        return { success: false, message: 'Password salah. Silakan coba lagi.' };
+      }
+    }
+
+    setCurrentUser(matched);
+    setCurrentRole(matched.role);
+    addLog('Login Sistem', `Pengguna ${matched.name} (${matched.email}) berhasil login dengan Email.`);
+    return { success: true, message: `Berhasil login sebagai ${matched.name} (${matched.role})` };
+  };
+
+  const logoutUser = () => {
+    if (currentUser) {
+      addLog('Logout Sistem', `Pengguna ${currentUser.name} telah logout.`);
+    }
+    setCurrentUser(null);
+  };
+
   const [integrationConfig, setIntegrationConfig] = useState<IntegrationConfig>({
     googleSheetsUrl: 'https://docs.google.com/spreadsheets/d/1_lazuardi_gcs_assets_export',
-    firebaseEnabled: true,
+    firebaseEnabled: false,
     supabaseEnabled: false,
     accurateOnlineConnected: true,
     whatsappWebhook: '+6281299008822 (Lazuardi FM Bot)',
@@ -879,6 +962,9 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         maintenanceLogs,
         currentRole,
         setCurrentRole,
+        currentUser,
+        loginWithEmail,
+        logoutUser,
         users,
         addUser,
         updateUserRole,

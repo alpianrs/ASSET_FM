@@ -15,6 +15,7 @@ import { HistoryLogView } from './components/HistoryLogView';
 import { IntegrationPanel } from './components/IntegrationPanel';
 import { AssetFormModal } from './components/AssetFormModal';
 import { ACServiceScanModal } from './components/ACServiceScanModal';
+import { LoginModal } from './components/LoginModal';
 import { Asset, UnitName } from './types';
 
 function MainApp() {
@@ -22,6 +23,7 @@ function MainApp() {
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [acServiceScanOpen, setAcServiceScanOpen] = useState(false);
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [printQRAsset, setPrintQRAsset] = useState<Asset | null>(null);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [assetToEdit, setAssetToEdit] = useState<Asset | null>(null);
@@ -55,6 +57,7 @@ function MainApp() {
           onOpenScanner={handleOpenScanner}
           onOpenACServiceModal={() => setAcServiceScanOpen(true)}
           onOpenStockOpname={() => setActiveTab('stock_opname')}
+          onOpenLoginModal={() => setLoginModalOpen(true)}
           onSearchSelect={(id) => setSelectedAssetId(id)}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -143,6 +146,11 @@ function MainApp() {
           }}
         />
       )}
+
+      <LoginModal
+        isOpen={loginModalOpen}
+        onClose={() => setLoginModalOpen(false)}
+      />
 
     </div>
   );
