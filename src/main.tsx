@@ -8,8 +8,9 @@ if (typeof window !== 'undefined') {
   window.addEventListener('error', (event) => {
     if (event.message && event.message.includes('Cannot set property fetch')) {
       event.preventDefault();
+      event.stopImmediatePropagation();
     }
-  });
+  }, true);
 }
 
 createRoot(document.getElementById('root')!).render(

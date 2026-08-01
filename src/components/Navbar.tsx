@@ -351,6 +351,28 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
           <button
             onClick={() => {
+              setActiveTab('stock_opname');
+              setMobileMenuOpen(false);
+            }}
+            className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold ${
+              activeTab === 'stock_opname' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            Stock Opname
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('integration');
+              setMobileMenuOpen(false);
+            }}
+            className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold ${
+              activeTab === 'integration' ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'
+            }`}
+          >
+            Integrasi Cloud & Sheet
+          </button>
+          <button
+            onClick={() => {
               setActiveTab('reports');
               setMobileMenuOpen(false);
             }}

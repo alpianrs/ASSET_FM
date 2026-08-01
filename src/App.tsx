@@ -12,6 +12,7 @@ import { ProcurementManager } from './components/ProcurementManager';
 import { StockOpname } from './components/StockOpname';
 import { ReportsManager } from './components/ReportsManager';
 import { HistoryLogView } from './components/HistoryLogView';
+import { IntegrationPanel } from './components/IntegrationPanel';
 import { AssetFormModal } from './components/AssetFormModal';
 import { ACServiceScanModal } from './components/ACServiceScanModal';
 import { LoginModal } from './components/LoginModal';
@@ -112,6 +113,8 @@ function MainApp() {
           {activeTab === 'master' && <MasterDataModal />}
 
           {activeTab === 'stock_opname' && <StockOpname />}
+
+          {activeTab === 'integration' && <IntegrationPanel />}
 
           {activeTab === 'reports' && <ReportsManager />}
 

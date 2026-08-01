@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   FileText,
   History,
+  Share2,
 } from 'lucide-react';
 import { useAsset } from '../context/AssetContext';
 
@@ -24,6 +25,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
     { id: 'procurement', label: 'Monitoring Pengadaan', icon: ShieldCheck },
     { id: 'master', label: 'Locations & Gedung', icon: Building2 },
     { id: 'stock_opname', label: 'Stock Opname', icon: ClipboardCheck },
+    { id: 'integration', label: 'Integrasi Cloud & Sheet', icon: Share2 },
     { id: 'reports', label: 'Reports & Export', icon: FileText },
     { id: 'history', label: 'Activity Logs', icon: History },
   ];

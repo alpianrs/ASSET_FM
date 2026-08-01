@@ -18,6 +18,7 @@ import {
   AssetStatus
 } from '../types';
 import { INITIAL_ASSETS, INITIAL_GEDUNG, INITIAL_NOTIFICATIONS, INITIAL_UNITS, INITIAL_HISTORY_LOGS, INITIAL_USERS, getDefaultPermissionsByRole } from '../data/mockData';
+import { syncAssetsToGoogleSheet, importDataFromGoogleSheets } from '../utils/googleSheetsService';
 
 interface IntegrationConfig {
   googleSheetsUrl: string;
@@ -48,6 +49,13 @@ interface AssetContextType {
   deleteUser: (userId: string) => void;
   integrationConfig: IntegrationConfig;
   setIntegrationConfig: React.Dispatch<React.SetStateAction<IntegrationConfig>>;
+
+  // Google Sheets Live Sync State
+  isSyncing: boolean;
+  lastSyncTime: string | null;
+  syncError: string | null;
+  syncToGoogleSheetsNow: () => Promise<boolean>;
+  fetchFromGoogleSheetsNow: () => Promise<boolean>;
 
   // Verification & Gatekeeping Actions
   verifyAsset: (assetId: string, data: { nomorInventaris: string; qrCode: string; kategori: Asset['kategori']; masapakaiTahun: number; kondisi: Asset['kondisi'] }) => void;
@@ -233,10 +241,97 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     emailAlerts: 'fm.lazuardi@lazuardi.sch.id',
   });
 
-  // Persistence
+  // Google Sheets Live Sync State
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  const syncToGoogleSheetsNow = async (): Promise<boolean> => {
+    setIsSyncing(true);
+    setSyncError(null);
+    try {
+      const ok = await syncAssetsToGoogleSheet(
+        'direct_gsheets_token_active',
+        integrationConfig.googleSheetsUrl,
+        assets,
+        integrationConfig.appScriptWebAppUrl
+      );
+      if (ok) {
+        const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        setLastSyncTime(timeStr);
+        return true;
+      } else {
+        setSyncError('Gagal sinkronisasi otomatis ke Google Sheets.');
+        return false;
+      }
+    } catch (err: any) {
+      setSyncError(err?.message || 'Gagal terhubung ke Google Apps Script.');
+      return false;
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const fetchFromGoogleSheetsNow = async (): Promise<boolean> => {
+    setIsSyncing(true);
+    setSyncError(null);
+    try {
+      const imported = await importDataFromGoogleSheets(
+        'direct_gsheets_token_active',
+        integrationConfig.googleSheetsUrl,
+        integrationConfig.appScriptWebAppUrl
+      );
+      if (imported && imported.length > 0) {
+        bulkUpsertAssets(imported);
+        const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        setLastSyncTime(timeStr);
+        return true;
+      } else {
+        setSyncError('Respon Google Sheets kosong atau Apps Script belum dikonfigurasi dengan benar.');
+        return false;
+      }
+    } catch (err: any) {
+      setSyncError(err?.message || 'Gagal membaca data dari Google Sheets.');
+      return false;
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Persistence & Auto-Sync to Google Sheets when assets change
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_assets`, JSON.stringify(assets));
-  }, [assets]);
+
+    // Debounced automatic background sync to Google Sheets
+    const timer = setTimeout(() => {
+      if (integrationConfig.appScriptWebAppUrl || integrationConfig.googleSheetsUrl) {
+        syncAssetsToGoogleSheet(
+          'direct_gsheets_token_active',
+          integrationConfig.googleSheetsUrl,
+          assets,
+          integrationConfig.appScriptWebAppUrl
+        )
+          .then((ok) => {
+            if (ok) {
+              setLastSyncTime(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+              setSyncError(null);
+            }
+          })
+          .catch((e) => {
+            console.warn('Background auto-sync warning:', e);
+          });
+      }
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [assets, integrationConfig.appScriptWebAppUrl, integrationConfig.googleSheetsUrl]);
+
+  // Initial Fetch on Load
+  useEffect(() => {
+    if (integrationConfig.appScriptWebAppUrl) {
+      fetchFromGoogleSheetsNow().catch(() => {});
+    }
+  }, [integrationConfig.appScriptWebAppUrl]);
 
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_units`, JSON.stringify(units));
@@ -960,6 +1055,11 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         deleteUser,
         integrationConfig,
         setIntegrationConfig,
+        isSyncing,
+        lastSyncTime,
+        syncError,
+        syncToGoogleSheetsNow,
+        fetchFromGoogleSheetsNow,
         verifyAsset,
         rejectAsset,
         recordACWash,
