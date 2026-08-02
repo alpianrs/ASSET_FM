@@ -761,17 +761,34 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       catatan: washData.catatan,
     };
 
+    const newMaintenanceLog: MaintenanceLog = {
+      id: `m-wash-${Date.now()}`,
+      assetId,
+      woNumber: `WO-AC-${Date.now().toString().slice(-5)}`,
+      tanggal: washData.tanggalCuci,
+      jenisMaintenance: 'Cuci AC',
+      biaya: washData.biaya,
+      teknisi: washData.teknisi,
+      vendor: washData.vendor,
+      catatan: `[Cuci AC] ${washData.catatan || 'Cuci rutin AC & pengecekan freon.'} (Tekanan Freon: ${washData.tekananFreonPsi || 75} Psi)`,
+      status: 'Completed',
+    };
+
+    setMaintenanceLogs((prev) => [newMaintenanceLog, ...prev]);
+
     setAssets((prev) =>
       prev.map((a) => {
         if (a.id === assetId) {
-          const history = a.acWashHistory || [];
+          const washHistory = a.acWashHistory || [];
+          const mainHistory = a.maintenanceHistory || [];
           return {
             ...a,
             terakhirCuciAC: washData.tanggalCuci,
             jadwalCuciACBerikutnya: nextWashDate,
             statusCuciAC: 'Jadwal Aman',
             kondisi: 'Baik',
-            acWashHistory: [newWashRecord, ...history],
+            acWashHistory: [newWashRecord, ...washHistory],
+            maintenanceHistory: [newMaintenanceLog, ...mainHistory],
           };
         }
         return a;

@@ -28,6 +28,7 @@ import {
   ExternalLink,
   Link2,
   FileSpreadsheet,
+  Snowflake,
 } from 'lucide-react';
 
 interface AssetDetailModalProps {
@@ -651,6 +652,42 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
           {/* TAB 2: RIWAYAT */}
           {activeTab === 'riwayat' && (
             <div className="space-y-6">
+
+              {/* AC Washing History (if category is AC or has wash records) */}
+              {(asset.kategori === 'AC' || (asset.acWashHistory && asset.acWashHistory.length > 0)) && (
+                <div className="space-y-3 p-4 rounded-2xl bg-cyan-50/70 border border-cyan-200">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-cyan-900 flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <Snowflake className="w-4 h-4 text-cyan-600" />
+                      <span>Riwayat Cuci & Maintenance Spesifik AC</span>
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-cyan-200 text-cyan-900 font-extrabold text-[10px]">
+                      {asset.acWashHistory?.length || 0} Record
+                    </span>
+                  </h4>
+
+                  {(!asset.acWashHistory || asset.acWashHistory.length === 0) ? (
+                    <p className="text-xs text-cyan-700 italic">Belum ada riwayat pencucian AC yang dicatat.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {asset.acWashHistory.map((wash) => (
+                        <div key={wash.id} className="p-3 rounded-xl bg-white border border-cyan-100 text-xs space-y-1 shadow-2xs">
+                          <div className="flex items-center justify-between font-bold text-slate-800">
+                            <span className="text-cyan-950 font-black">Tgl Cuci: {wash.tanggalCuci || wash.tanggalService || 'N/A'}</span>
+                            <span className="text-emerald-700 font-extrabold">{formatRupiah(wash.biaya || 0)}</span>
+                          </div>
+                          <p className="text-slate-700">{wash.catatan}</p>
+                          <div className="flex flex-wrap items-center gap-3 text-[10px] text-slate-500 pt-1 border-t border-slate-100 mt-1">
+                            <span>Teknisi/Vendor: <strong>{wash.teknisi || wash.teknisiName || wash.vendor || 'Teknisi FM'}</strong></span>
+                            {wash.tekananFreonPsi && <span>Freon: <strong>{wash.tekananFreonPsi} Psi</strong></span>}
+                            {wash.tanggalCuciBerikutnya && <span className="text-cyan-700">Jadwal Berikutnya: <strong>{wash.tanggalCuciBerikutnya}</strong></span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               
               {/* Maintenance History */}
               <div className="space-y-3">
