@@ -137,14 +137,20 @@ export interface AssetDocument {
 export interface ACWashRecord {
   id: string;
   assetId: string;
-  tanggalCuci: string;
-  tanggalCuciBerikutnya: string;
-  teknisi: string;
+  tanggalCuci?: string;
+  tanggalCuciBerikutnya?: string;
+  tanggalService?: string;
+  jenisService?: string;
+  teknisi?: string;
+  teknisiName?: string;
+  isVendorLuar?: boolean;
+  kondisiFreon?: string;
+  gantiSparepart?: boolean;
   vendor?: string;
   biaya: number;
   tekananFreonPsi?: number;
-  pembersihanFilter: boolean;
-  pembersihanOutdoor: boolean;
+  pembersihanFilter?: boolean;
+  pembersihanOutdoor?: boolean;
   catatan: string;
 }
 
@@ -223,7 +229,7 @@ export interface Asset {
   merk: string;
   tipe: string;
   model: string;
-  serialNumber: string;
+  serialNumber?: string;
   barcodePabrik?: string;
   fotoUrl: string;
 
@@ -254,7 +260,7 @@ export interface Asset {
   tanggalPembelian: string; // YYYY-MM-DD
   harga: number; // Rupiah
   garansiBulan: number; // e.g. 24 bulan
-  garansiExpiredDate: string;
+  garansiExpiredDate?: string;
   masapakaiTahun: number; // useful life in years
 
   // Lokasi
@@ -265,7 +271,7 @@ export interface Asset {
   status: AssetStatus;
 
   // Associated Records
-  documents: AssetDocument[];
+  documents?: AssetDocument[];
   maintenanceHistory: MaintenanceLog[];
   damageReports: AssetDamageReport[];
   loanHistory: AssetLoanRecord[];
@@ -274,11 +280,11 @@ export interface Asset {
   // AC Washing & Service Tracking
   terakhirCuciAC?: string; // YYYY-MM-DD
   jadwalCuciACBerikutnya?: string; // YYYY-MM-DD
-  statusCuciAC?: 'Jadwal Aman' | 'Segera Dicuci' | 'Overdue Cuci AC';
+  statusCuciAC?: 'Jadwal Aman' | 'Segera Dicuci' | 'Overdue Cuci AC' | 'Siap Pakai / Normal';
   acWashHistory?: ACWashRecord[];
 
   // Repair Status & Disposal Recommendation
-  rekomendasiPerbaikan?: 'Siap Pakai' | 'Rekomendasi Dijual' | 'Rekomendasi Didonasikan' | 'Afkir / Scrap';
+  rekomendasiPerbaikan?: 'Siap Pakai' | 'Rekomendasi Dijual' | 'Rekomendasi Didonasikan' | 'Afkir / Scrap' | 'Dingin Normal' | string;
   catatanPerbaikanTerakhir?: string;
   tanggalSelesaiPerbaikan?: string;
 

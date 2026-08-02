@@ -1,7 +1,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User, signOut } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { Asset, GedungName, UnitName } from '../types';
+import { Asset, GedungName, UnitName, UserAccount } from '../types';
 
 // Initialize Firebase App
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
@@ -328,7 +328,137 @@ function parseRawRowsToAssets(rawRows: string[][]): Partial<Asset>[] {
         jadwalCuciACBerikutnya: row[14] || undefined,
         penanggungJawab: row[15] || '',
         nomorPO: row[16] || '',
-        fotoUrl: row[17] || 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=600&auto=format&fit=crop&q=80',
+        fotoUrl: row[17] && row[17].trim() ? row[17].trim() : undefined,
+      };
+    });
+}
+
+/**
+ * 4. EXPORT USERS & HAK AKSES TO GOOGLE SHEETS
+ */
+export const exportUsersToGoogleSheets = async (
+  accessToken: string,
+  spreadsheetId: string,
+  users: UserAccount[],
+  appScriptUrl?: string
+) => {
+  const cleanId = extractSpreadsheetId(spreadsheetId);
+
+  const header = [
+    'ID User',
+    'Nama Lengkap',
+    'Username',
+    'Email',
+    'Role / Jabatan',
+    'Unit Kerja',
+    'Status',
+    'No HP',
+    'Hak Verifikasi Pengadaan',
+    'Hak Kelola Aset',
+    'Hak Maintenance & Service AC',
+    'Hak Audit Stock Opname',
+    'Hak Master Data & Gedung',
+    'Hak Kelola Pengguna',
+    'Hak Sync Google Sheets',
+  ];
+
+  const rows = users.map((u) => [
+    u.id,
+    u.name,
+    u.username,
+    u.email,
+    u.role,
+    u.unit,
+    u.status,
+    u.phone || '',
+    u.permissions?.canVerifyProcurement ? 'YA' : 'TIDAK',
+    u.permissions?.canManageAssets ? 'YA' : 'TIDAK',
+    u.permissions?.canPerformMaintenance ? 'YA' : 'TIDAK',
+    u.permissions?.canAuditStockOpname ? 'YA' : 'TIDAK',
+    u.permissions?.canManageMasterData ? 'YA' : 'TIDAK',
+    u.permissions?.canManageUsers ? 'YA' : 'TIDAK',
+    u.permissions?.canSyncGoogleSheets ? 'YA' : 'TIDAK',
+  ]);
+
+  const valuesData = [header, ...rows];
+  const targetScriptUrl = appScriptUrl || (spreadsheetId.startsWith('http') && spreadsheetId.includes('script.google.com') ? spreadsheetId : 'https://script.google.com/macros/s/AKfycbxmnN_utcfV96wQB6xZAJGdrzaTFEZTduJrwdIiyPPyyff3j8Pxz1LxUOEB77KDVguU/exec');
+
+  if (targetScriptUrl) {
+    try {
+      await fetch(targetScriptUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ sheetName: 'Daftar Pengguna', data: valuesData }),
+      });
+      localStorage.setItem(`gsheet_users_${cleanId}`, JSON.stringify(valuesData));
+      return true;
+    } catch (err) {
+      localStorage.setItem(`gsheet_users_${cleanId}`, JSON.stringify(valuesData));
+      return true;
+    }
+  }
+
+  localStorage.setItem(`gsheet_users_${cleanId}`, JSON.stringify(valuesData));
+  return true;
+};
+
+/**
+ * 5. IMPORT USERS & HAK AKSES FROM GOOGLE SHEETS
+ */
+export const importUsersFromGoogleSheets = async (
+  accessToken: string,
+  spreadsheetId: string,
+  appScriptUrl?: string
+): Promise<UserAccount[]> => {
+  const cleanId = extractSpreadsheetId(spreadsheetId);
+  const targetScriptUrl = appScriptUrl || (spreadsheetId.startsWith('http') && spreadsheetId.includes('script.google.com') ? spreadsheetId : 'https://script.google.com/macros/s/AKfycbxmnN_utcfV96wQB6xZAJGdrzaTFEZTduJrwdIiyPPyyff3j8Pxz1LxUOEB77KDVguU/exec');
+
+  if (targetScriptUrl) {
+    try {
+      const response = await fetch(`${targetScriptUrl}?sheet=Daftar%20Pengguna`);
+      if (response.ok) {
+        const rawData = await response.json();
+        if (Array.isArray(rawData) && rawData.length > 0) {
+          const rawRows = Array.isArray(rawData[0]) ? rawData.slice(1) : rawData;
+          return parseRawRowsToUsers(rawRows);
+        }
+      }
+    } catch (e) {
+      console.warn('Apps Script user import fallback:', e);
+    }
+  }
+
+  const cached = localStorage.getItem(`gsheet_users_${cleanId}`);
+  if (cached) {
+    const parsed = JSON.parse(cached) as string[][];
+    return parseRawRowsToUsers(parsed.slice(1));
+  }
+  return [];
+};
+
+function parseRawRowsToUsers(rawRows: string[][]): UserAccount[] {
+  return rawRows
+    .filter((row) => row && row.length >= 2 && row[1])
+    .map((row) => {
+      const parseBool = (val: any) => String(val).toUpperCase() === 'YA' || String(val) === 'true' || String(val) === '1';
+      return {
+        id: row[0] || `usr-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        name: row[1],
+        username: row[2] || row[1].toLowerCase().replace(/\s+/g, ''),
+        email: row[3] || `${row[2] || 'user'}@lazuardi.sch.id`,
+        role: (row[4] as any) || 'User',
+        unit: (row[5] as any) || 'SD',
+        status: (row[6] as any) === 'Non-aktif' ? 'Non-aktif' : 'Aktif',
+        phone: row[7] || '',
+        permissions: {
+          canVerifyProcurement: parseBool(row[8]),
+          canManageAssets: parseBool(row[9]),
+          canPerformMaintenance: parseBool(row[10]),
+          canAuditStockOpname: parseBool(row[11]),
+          canManageMasterData: parseBool(row[12]),
+          canManageUsers: parseBool(row[13]),
+          canSyncGoogleSheets: parseBool(row[14]),
+        },
       };
     });
 }

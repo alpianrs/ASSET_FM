@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 import { useAsset } from '../context/AssetContext';
 import {
   X,
@@ -15,6 +15,7 @@ import {
   DollarSign,
   Calendar,
   Layers,
+  RefreshCw,
 } from 'lucide-react';
 import { Asset } from '../types';
 
@@ -35,6 +36,8 @@ export const ACServiceScanModal: React.FC<ACServiceScanModalProps> = ({
   const [manualInput, setManualInput] = useState('');
   const [scanError, setScanError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraPermissionError, setCameraPermissionError] = useState('');
 
   // Form states for Vendor Luar / Tukang AC
   const [vendorName, setVendorName] = useState('CV Windu Cool Technique (Vendor Luar)');
@@ -49,27 +52,26 @@ export const ACServiceScanModal: React.FC<ACServiceScanModalProps> = ({
   const [gantiSparepart, setGantiSparepart] = useState(false);
   const [catatan, setCatatan] = useState('Service rutin, pencucian indoor outdoor & pengecekan tekanan freon. Kondisi dingin optimal.');
 
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
 
-  useEffect(() => {
-    // Only init QR camera scanner if no AC is selected yet
-    if (!selectedAC) {
-      const scanner = new Html5QrcodeScanner(
-        'ac-qr-reader',
-        {
-          fps: 10,
-          qrbox: { width: 220, height: 220 },
-          aspectRatio: 1.0,
-        },
-        false
-      );
-      scannerRef.current = scanner;
+  const startACCamera = async () => {
+    setCameraPermissionError('');
+    setIsCameraActive(false);
 
-      scanner.render(
+    try {
+      if (!html5QrCodeRef.current) {
+        html5QrCodeRef.current = new Html5Qrcode('ac-qr-reader');
+      }
+
+      const qrCode = html5QrCodeRef.current;
+
+      await qrCode.start(
+        { facingMode: 'environment' },
+        { fps: 12, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
         (decodedText) => {
           const found = getAssetByQR(decodedText);
           if (found && found.kategori === 'AC') {
-            scanner.clear();
+            qrCode.stop().then(() => qrCode.clear()).catch(() => {});
             setSelectedAC(found);
             setScanError('');
           } else if (found) {
@@ -80,10 +82,52 @@ export const ACServiceScanModal: React.FC<ACServiceScanModalProps> = ({
         },
         () => {}
       );
+      setIsCameraActive(true);
+    } catch (err) {
+      try {
+        if (html5QrCodeRef.current) {
+          await html5QrCodeRef.current.start(
+            { facingMode: 'user' },
+            { fps: 12, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
+            (decodedText) => {
+              const found = getAssetByQR(decodedText);
+              if (found && found.kategori === 'AC') {
+                html5QrCodeRef.current?.stop().then(() => html5QrCodeRef.current?.clear()).catch(() => {});
+                setSelectedAC(found);
+                setScanError('');
+              } else if (found) {
+                setScanError(`Aset "${found.namaAsset}" bukan kategori AC (${found.kategori}).`);
+              } else {
+                setScanError(`QR Code "${decodedText}" tidak ditemukan.`);
+              }
+            },
+            () => {}
+          );
+          setIsCameraActive(true);
+        }
+      } catch (err2) {
+        setCameraPermissionError('Gagal membuka kamera belakang HP. Pastikan izin kamera telah diberikan.');
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!selectedAC) {
+      // Delay slightly to ensure element is rendered
+      const timer = setTimeout(() => {
+        startACCamera();
+      }, 100);
 
       return () => {
-        if (scannerRef.current) {
-          scannerRef.current.clear().catch(() => {});
+        clearTimeout(timer);
+        if (html5QrCodeRef.current) {
+          try {
+            if (html5QrCodeRef.current.isScanning) {
+              html5QrCodeRef.current.stop().then(() => html5QrCodeRef.current?.clear()).catch(() => {});
+            } else {
+              html5QrCodeRef.current.clear().catch(() => {});
+            }
+          } catch (e) {}
         }
       };
     }
@@ -94,7 +138,9 @@ export const ACServiceScanModal: React.FC<ACServiceScanModalProps> = ({
     if (!manualInput.trim()) return;
     const found = getAssetByQR(manualInput);
     if (found && found.kategori === 'AC') {
-      if (scannerRef.current) scannerRef.current.clear().catch(() => {});
+      if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+        html5QrCodeRef.current.stop().then(() => html5QrCodeRef.current?.clear()).catch(() => {});
+      }
       setSelectedAC(found);
       setScanError('');
     } else if (found) {
@@ -200,12 +246,29 @@ export const ACServiceScanModal: React.FC<ACServiceScanModalProps> = ({
             <div className="space-y-5">
               
               {/* Camera Scanner Box */}
-              <div className="bg-slate-900 p-3 rounded-2xl border border-cyan-900 text-center space-y-2">
-                <p className="text-xs font-extrabold text-cyan-300 uppercase tracking-wider flex items-center justify-center gap-1.5">
-                  <Camera className="w-4 h-4 text-cyan-400" />
-                  <span>Pemindai Kamera QR Stiker AC</span>
-                </p>
-                <div id="ac-qr-reader" className="w-full rounded-xl overflow-hidden text-white min-h-[180px]" />
+              <div className="relative bg-slate-950 p-2 rounded-2xl border border-cyan-900 text-center space-y-2 overflow-hidden min-h-[220px] flex items-center justify-center">
+                <div id="ac-qr-reader" className="w-full text-white" />
+
+                {!isCameraActive && !cameraPermissionError && (
+                  <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center gap-2 p-4 text-white z-10">
+                    <RefreshCw className="w-7 h-7 text-cyan-400 animate-spin" />
+                    <p className="text-xs font-bold text-cyan-200">Membuka Kamera Belakang HP...</p>
+                  </div>
+                )}
+
+                {cameraPermissionError && (
+                  <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center gap-2 p-4 text-center text-white z-10">
+                    <AlertCircle className="w-8 h-8 text-amber-400 shrink-0" />
+                    <p className="text-xs text-slate-200">{cameraPermissionError}</p>
+                    <button
+                      onClick={startACCamera}
+                      className="px-3.5 py-1.5 rounded-xl bg-cyan-700 hover:bg-cyan-800 text-white font-bold text-xs flex items-center gap-1.5"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Coba Kamera Belakang Lagi</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {scanError && (

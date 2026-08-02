@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAsset } from '../context/AssetContext';
 import { Asset, UnitName, GedungName, AssetCondition, AssetStatus } from '../types';
 import { formatRupiah, calculateDepreciation, exportAssetsToPDF } from '../utils/exportUtils';
+import { getDirectImageUrl } from '../utils/imageUtils';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   X,
@@ -368,7 +369,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
               {/* Photo & QR Preview */}
               <div className="space-y-4">
                 <div className="rounded-2xl overflow-hidden border border-slate-200 aspect-video bg-slate-100 shadow-sm relative group">
-                  <img src={asset.fotoUrl} alt={asset.namaAsset} className="w-full h-full object-cover" />
+                  <img src={getDirectImageUrl(asset.fotoUrl)} alt={asset.namaAsset} className="w-full h-full object-cover" />
                   <a
                     href={asset.fotoUrl}
                     target="_blank"

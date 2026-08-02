@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAsset } from '../context/AssetContext';
 import { Asset, UnitName, GedungName, AssetCondition, AssetCategory, AssetStatus } from '../types';
 import { formatRupiah, exportAssetsToExcel, exportAssetsToPDF } from '../utils/exportUtils';
+import { getDirectImageUrl } from '../utils/imageUtils';
 import {
   Search,
   Filter,
@@ -351,7 +352,7 @@ export const AssetList: React.FC<AssetListProps> = ({
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
                         <img
-                          src={asset.fotoUrl}
+                          src={getDirectImageUrl(asset.fotoUrl)}
                           alt={asset.namaAsset}
                           className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0"
                         />
@@ -474,7 +475,7 @@ export const AssetList: React.FC<AssetListProps> = ({
               <div>
                 <div className="relative rounded-2xl overflow-hidden aspect-video bg-slate-100 mb-3 border border-slate-100">
                   <img
-                    src={asset.fotoUrl}
+                    src={getDirectImageUrl(asset.fotoUrl)}
                     alt={asset.namaAsset}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />

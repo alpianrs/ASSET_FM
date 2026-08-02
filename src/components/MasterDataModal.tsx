@@ -18,6 +18,7 @@ import {
   Key,
   ShieldCheck,
   Check,
+  RefreshCw,
 } from 'lucide-react';
 
 export const MasterDataModal: React.FC = () => {
@@ -30,9 +31,14 @@ export const MasterDataModal: React.FC = () => {
     users,
     addUser,
     updateUserRole,
+    updateUser,
     deleteUser,
     currentRole,
     setCurrentRole,
+    syncToGoogleSheetsNow,
+    fetchFromGoogleSheetsNow,
+    isSyncing,
+    lastSyncTime,
   } = useAsset();
 
   const [activeTab, setActiveTab] = useState<'units' | 'gedung' | 'users'>('users');
@@ -52,6 +58,8 @@ export const MasterDataModal: React.FC = () => {
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
 
   const [userName, setUserName] = useState('');
+  const [userUsername, setUserUsername] = useState('');
+  const [userPassword, setUserPassword] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [userPhone, setUserPhone] = useState('');
   const [userUnit, setUserUnit] = useState<UnitName | 'Facility Management' | 'Semua'>('Facility Management');
@@ -89,12 +97,26 @@ export const MasterDataModal: React.FC = () => {
 
   const handleSaveUser = (e: React.FormEvent) => {
     e.preventDefault();
+    const finalUsername = userUsername.trim() || userEmail.split('@')[0] || `user_${Date.now()}`;
+    const finalPassword = userPassword.trim() || '123';
+
     if (editingUser) {
-      updateUserRole(editingUser.id, userRole, customPermissions, userUnit);
+      updateUser(editingUser.id, {
+        name: userName,
+        username: finalUsername,
+        password: finalPassword,
+        email: userEmail,
+        phone: userPhone,
+        unit: userUnit,
+        role: userRole,
+        permissions: customPermissions,
+      });
       setEditingUser(null);
     } else {
       addUser({
         name: userName,
+        username: finalUsername,
+        password: finalPassword,
         email: userEmail,
         phone: userPhone,
         unit: userUnit,
@@ -110,6 +132,8 @@ export const MasterDataModal: React.FC = () => {
   const openEditUser = (u: UserAccount) => {
     setEditingUser(u);
     setUserName(u.name);
+    setUserUsername(u.username || u.email.split('@')[0] || '');
+    setUserPassword(u.password || '');
     setUserEmail(u.email);
     setUserPhone(u.phone || '');
     setUserUnit(u.unit);
@@ -121,6 +145,8 @@ export const MasterDataModal: React.FC = () => {
   const resetUserForm = () => {
     setEditingUser(null);
     setUserName('');
+    setUserUsername('');
+    setUserPassword('');
     setUserEmail('');
     setUserPhone('');
     setUserUnit('Facility Management');
@@ -282,14 +308,34 @@ export const MasterDataModal: React.FC = () => {
 
           {/* User List Table */}
           <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
-            <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-              <h3 className="text-xs font-black uppercase text-slate-700 tracking-wider flex items-center gap-2">
+            <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
                 <User className="w-4 h-4 text-blue-600" />
-                <span>Daftar Pengguna & Hak Akses Terdaftar</span>
-              </h3>
-              <span className="text-xs font-bold text-slate-500">
-                Total {users.length} Akun Terdaftar
-              </span>
+                <h3 className="text-xs font-black uppercase text-slate-700 tracking-wider">
+                  Daftar Pengguna & Hak Akses Terdaftar ({users.length} Akun)
+                </h3>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={fetchFromGoogleSheetsNow}
+                  disabled={isSyncing}
+                  className="px-3 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-extrabold text-xs flex items-center gap-1.5 transition-all"
+                  title="Tarik data pengguna & hak akses terbaru dari Google Sheet"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                  <span>Tarik dari Google Sheet</span>
+                </button>
+                <button
+                  onClick={syncToGoogleSheetsNow}
+                  disabled={isSyncing}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center gap-1.5 transition-all shadow-xs"
+                  title="Simpan & kirim daftar pengguna ke tab 'Daftar Pengguna' di Google Sheet"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                  <span>Sync ke Google Sheet</span>
+                </button>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -550,6 +596,32 @@ export const MasterDataModal: React.FC = () => {
                     onChange={(e) => setUserEmail(e.target.value)}
                     placeholder="e.g. ahmad@lazuardi.sch.id"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-600 font-extrabold mb-1">Username Login *</label>
+                  <input
+                    type="text"
+                    value={userUsername}
+                    onChange={(e) => setUserUsername(e.target.value)}
+                    placeholder="e.g. ahmad.santoso"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-bold text-slate-900"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-600 font-extrabold mb-1">Password Login *</label>
+                  <input
+                    type="text"
+                    value={userPassword}
+                    onChange={(e) => setUserPassword(e.target.value)}
+                    placeholder="e.g. Pass123!"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-bold text-slate-900"
                     required
                   />
                 </div>

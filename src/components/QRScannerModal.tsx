@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 import { useAsset } from '../context/AssetContext';
-import { X, Camera, Search, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, Camera, Search, Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
 
 interface QRScannerModalProps {
   onClose: () => void;
@@ -15,40 +15,87 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
   const { assets, getAssetByQR } = useAsset();
   const [manualInput, setManualInput] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraPermissionError, setCameraPermissionError] = useState('');
+  const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+
+  const startCamera = async () => {
+    setCameraPermissionError('');
+    setIsCameraActive(false);
+
+    try {
+      if (!html5QrCodeRef.current) {
+        html5QrCodeRef.current = new Html5Qrcode('reader');
+      }
+
+      const qrCode = html5QrCodeRef.current;
+
+      // Directly request back camera ('environment')
+      await qrCode.start(
+        { facingMode: 'environment' },
+        {
+          fps: 12,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0,
+        },
+        (decodedText) => {
+          const found = getAssetByQR(decodedText);
+          if (found) {
+            qrCode.stop().then(() => qrCode.clear()).catch(() => {});
+            onScanSuccess(found.id);
+          } else {
+            setErrorMsg(`QR Code "${decodedText}" tidak ditemukan dalam database Lazuardi GCS.`);
+          }
+        },
+        () => {
+          // silent error callback during continuous scan
+        }
+      );
+      setIsCameraActive(true);
+    } catch (err: any) {
+      console.warn('Environment camera failed, trying fallback mode:', err);
+      // Fallback: try facing mode user (front camera / laptop webcam)
+      try {
+        if (html5QrCodeRef.current) {
+          await html5QrCodeRef.current.start(
+            { facingMode: 'user' },
+            { fps: 12, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+            (decodedText) => {
+              const found = getAssetByQR(decodedText);
+              if (found) {
+                html5QrCodeRef.current?.stop().then(() => html5QrCodeRef.current?.clear()).catch(() => {});
+                onScanSuccess(found.id);
+              } else {
+                setErrorMsg(`QR Code "${decodedText}" tidak ditemukan.`);
+              }
+            },
+            () => {}
+          );
+          setIsCameraActive(true);
+        }
+      } catch (err2: any) {
+        setCameraPermissionError(
+          'Tidak dapat mengakses kamera belakang HP. Pastikan Anda mengizinkan akses kamera pada browser.'
+        );
+      }
+    }
+  };
 
   useEffect(() => {
-    // Initialize HTML5 QR Code Scanner
-    const scanner = new Html5QrcodeScanner(
-      'reader',
-      {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0,
-      },
-      /* verbose= */ false
-    );
-
-    scannerRef.current = scanner;
-
-    scanner.render(
-      (decodedText) => {
-        const found = getAssetByQR(decodedText);
-        if (found) {
-          scanner.clear();
-          onScanSuccess(found.id);
-        } else {
-          setErrorMsg(`QR Code "${decodedText}" tidak ditemukan dalam database Lazuardi GCS.`);
-        }
-      },
-      (error) => {
-        // silent continuous scan attempt
-      }
-    );
+    // Automatically trigger back camera when modal mounts
+    startCamera();
 
     return () => {
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(() => {});
+      if (html5QrCodeRef.current) {
+        try {
+          if (html5QrCodeRef.current.isScanning) {
+            html5QrCodeRef.current.stop().then(() => html5QrCodeRef.current?.clear()).catch(() => {});
+          } else {
+            html5QrCodeRef.current.clear().catch(() => {});
+          }
+        } catch (e) {
+          // ignore cleanup error
+        }
       }
     };
   }, []);
@@ -58,17 +105,21 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
     if (!manualInput.trim()) return;
     const found = getAssetByQR(manualInput);
     if (found) {
-      if (scannerRef.current) scannerRef.current.clear().catch(() => {});
+      if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+        html5QrCodeRef.current.stop().then(() => html5QrCodeRef.current?.clear()).catch(() => {});
+      }
       onScanSuccess(found.id);
     } else {
       setErrorMsg(`Kode / QR "${manualInput}" tidak ditemukan.`);
     }
   };
 
-  const handleQuickPresetScan = (qrCode: string) => {
-    const found = getAssetByQR(qrCode);
+  const handleQuickPresetScan = (qrCodeStr: string) => {
+    const found = getAssetByQR(qrCodeStr);
     if (found) {
-      if (scannerRef.current) scannerRef.current.clear().catch(() => {});
+      if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+        html5QrCodeRef.current.stop().then(() => html5QrCodeRef.current?.clear()).catch(() => {});
+      }
       onScanSuccess(found.id);
     }
   };
@@ -84,8 +135,8 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
               <Camera className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-extrabold text-base">Pemindai Kamera QR Code HP</h3>
-              <p className="text-xs text-emerald-200">Arahkan kamera ke Stiker QR Code Aset</p>
+              <h3 className="font-extrabold text-base">Kamera Belakang Siap Scan</h3>
+              <p className="text-xs text-emerald-200">Kamera aktif otomatis — langsung arahkan ke QR Aset</p>
             </div>
           </div>
           <button
@@ -96,11 +147,32 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
           </button>
         </div>
 
-        <div className="p-6 space-y-6 overflow-y-auto max-h-[80vh]">
+        <div className="p-6 space-y-5 overflow-y-auto max-h-[80vh]">
           
-          {/* Camera Scanner Container */}
-          <div className="rounded-2xl overflow-hidden bg-slate-900 border border-slate-200 p-2 text-center">
+          {/* Camera Viewport */}
+          <div className="relative rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 text-center min-h-[280px] flex items-center justify-center">
             <div id="reader" className="w-full text-white" />
+
+            {!isCameraActive && !cameraPermissionError && (
+              <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center gap-2 p-4 text-white">
+                <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin" />
+                <p className="text-xs font-bold">Membuka Kamera Belakang HP...</p>
+              </div>
+            )}
+
+            {cameraPermissionError && (
+              <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center gap-3 p-6 text-center text-white">
+                <AlertCircle className="w-10 h-10 text-amber-400 shrink-0" />
+                <p className="text-xs text-slate-200">{cameraPermissionError}</p>
+                <button
+                  onClick={startCamera}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  <span>Coba Lagi Kamera Belakang</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {errorMsg && (
@@ -158,3 +230,4 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
     </div>
   );
 };
+

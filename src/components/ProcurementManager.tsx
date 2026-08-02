@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAsset } from '../context/AssetContext';
 import { Asset, AssetCategory, AssetCondition, SumberPengadaan, StatusVerifikasi } from '../types';
 import { formatRupiah } from '../utils/exportUtils';
+import { getDirectImageUrl } from '../utils/imageUtils';
 import {
   ShieldCheck,
   Clock,
@@ -354,7 +355,7 @@ export const ProcurementManager: React.FC = () => {
                   {/* Left Thumbnail & Info */}
                   <div className="flex items-start gap-4">
                     <img
-                      src={asset.fotoUrl}
+                      src={getDirectImageUrl(asset.fotoUrl)}
                       alt={asset.namaAsset}
                       className="w-16 h-16 rounded-xl object-cover border border-slate-200 shrink-0 shadow-xs"
                     />

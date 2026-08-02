@@ -18,7 +18,7 @@ import {
   AssetStatus
 } from '../types';
 import { INITIAL_ASSETS, INITIAL_GEDUNG, INITIAL_NOTIFICATIONS, INITIAL_UNITS, INITIAL_HISTORY_LOGS, INITIAL_USERS, getDefaultPermissionsByRole } from '../data/mockData';
-import { syncAssetsToGoogleSheet, importDataFromGoogleSheets } from '../utils/googleSheetsService';
+import { syncAssetsToGoogleSheet, importDataFromGoogleSheets, exportUsersToGoogleSheets, importUsersFromGoogleSheets } from '../utils/googleSheetsService';
 
 interface IntegrationConfig {
   googleSheetsUrl: string;
@@ -46,6 +46,7 @@ interface AssetContextType {
   users: UserAccount[];
   addUser: (user: Omit<UserAccount, 'id' | 'permissions'> & { permissions?: UserAccount['permissions'] }) => void;
   updateUserRole: (userId: string, newRole: UserRole, newPermissions?: UserAccount['permissions'], newUnit?: UserAccount['unit']) => void;
+  updateUser: (userId: string, updatedData: Partial<UserAccount>) => void;
   deleteUser: (userId: string) => void;
   integrationConfig: IntegrationConfig;
   setIntegrationConfig: React.Dispatch<React.SetStateAction<IntegrationConfig>>;
@@ -86,7 +87,8 @@ interface AssetContextType {
   addGedung: (gedung: Omit<MasterGedung, 'id'>) => void;
 
   // Audit / Stock Opname
-  markAudited: (assetId: string) => void;
+  markAudited: (assetId: string, customDate?: string) => void;
+  resetStockOpname: (unitName?: string) => void;
 
   // Log & Notifications
   addLog: (action: string, details: string, assetId?: string, assetName?: string) => void;
@@ -119,8 +121,14 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [assets, setAssets] = useState<Asset[]>(() => {
     try {
       const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_assets`);
-      const parsed = saved ? JSON.parse(saved) : INITIAL_ASSETS;
-      return ensureUniqueAssets(parsed);
+      if (saved) {
+        const parsed: Asset[] = JSON.parse(saved);
+        // Merge missing INITIAL_ASSETS into saved assets if not already present
+        const existingIds = new Set(parsed.map((a) => a.id));
+        const missing = INITIAL_ASSETS.filter((a) => !existingIds.has(a.id));
+        return ensureUniqueAssets([...parsed, ...missing]);
+      }
+      return ensureUniqueAssets(INITIAL_ASSETS);
     } catch {
       return ensureUniqueAssets(INITIAL_ASSETS);
     }
@@ -232,7 +240,7 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [integrationConfig, setIntegrationConfig] = useState<IntegrationConfig>({
     googleSheetsUrl: 'https://docs.google.com/spreadsheets/d/15OEBPfr-Q9SXU7HPImwOXjCRbk2u4DBlyyOWa7B2AyE/edit?usp=sharing',
-    googleDriveFolderUrl: 'https://drive.google.com/drive/folders/11lZVmWvxVDBZDMUnS8q9mhyruGGhbX-g?usp=sharing',
+    googleDriveFolderUrl: 'https://drive.google.com/drive/u/0/folders/11lZVmWvxVDBZDMUnS8q9mhyruGGhbX-g',
     appScriptWebAppUrl: 'https://script.google.com/macros/s/AKfycbxmnN_utcfV96wQB6xZAJGdrzaTFEZTduJrwdIiyPPyyff3j8Pxz1LxUOEB77KDVguU/exec',
     firebaseEnabled: false,
     supabaseEnabled: false,
@@ -250,13 +258,21 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIsSyncing(true);
     setSyncError(null);
     try {
-      const ok = await syncAssetsToGoogleSheet(
+      const okAssets = await syncAssetsToGoogleSheet(
         'direct_gsheets_token_active',
         integrationConfig.googleSheetsUrl,
         assets,
         integrationConfig.appScriptWebAppUrl
       );
-      if (ok) {
+
+      const okUsers = await exportUsersToGoogleSheets(
+        'direct_gsheets_token_active',
+        integrationConfig.googleSheetsUrl,
+        users,
+        integrationConfig.appScriptWebAppUrl
+      );
+
+      if (okAssets || okUsers) {
         const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         setLastSyncTime(timeStr);
         return true;
@@ -276,20 +292,55 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIsSyncing(true);
     setSyncError(null);
     try {
-      const imported = await importDataFromGoogleSheets(
+      const importedAssets = await importDataFromGoogleSheets(
         'direct_gsheets_token_active',
         integrationConfig.googleSheetsUrl,
         integrationConfig.appScriptWebAppUrl
       );
-      if (imported && imported.length > 0) {
-        bulkUpsertAssets(imported);
-        const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        setLastSyncTime(timeStr);
-        return true;
-      } else {
-        setSyncError('Respon Google Sheets kosong atau Apps Script belum dikonfigurasi dengan benar.');
-        return false;
+      if (importedAssets && importedAssets.length > 0) {
+        bulkUpsertAssets(importedAssets);
       }
+
+      const importedUsers = await importUsersFromGoogleSheets(
+        'direct_gsheets_token_active',
+        integrationConfig.googleSheetsUrl,
+        integrationConfig.appScriptWebAppUrl
+      );
+      if (importedUsers && importedUsers.length > 0) {
+        setUsers((prevLocalUsers) => {
+          const map = new Map<string, UserAccount>();
+          prevLocalUsers.forEach((u) => {
+            map.set(u.id, u);
+            if (u.email) map.set(u.email.toLowerCase(), u);
+            if (u.username) map.set(u.username.toLowerCase(), u);
+          });
+
+          const merged = importedUsers.map((imp) => {
+            const existing = map.get(imp.id) || (imp.email && map.get(imp.email.toLowerCase())) || (imp.username && map.get(imp.username.toLowerCase()));
+            if (existing) {
+              return {
+                ...imp,
+                name: existing.name || imp.name,
+                username: existing.username || imp.username,
+                password: existing.password || imp.password,
+                role: existing.role || imp.role,
+                unit: existing.unit || imp.unit,
+                permissions: existing.permissions || imp.permissions,
+              };
+            }
+            return imp;
+          });
+
+          const importedIds = new Set(merged.map((u) => u.id));
+          const extraLocal = prevLocalUsers.filter((u) => !importedIds.has(u.id));
+
+          return [...merged, ...extraLocal];
+        });
+      }
+
+      const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setLastSyncTime(timeStr);
+      return true;
     } catch (err: any) {
       setSyncError(err?.message || 'Gagal membaca data dari Google Sheets.');
       return false;
@@ -325,6 +376,24 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     return () => clearTimeout(timer);
   }, [assets, integrationConfig.appScriptWebAppUrl, integrationConfig.googleSheetsUrl]);
+
+  // Persistence & Auto-Sync Users to Google Sheets when users change
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_users`, JSON.stringify(users));
+
+    const timer = setTimeout(() => {
+      if (integrationConfig.appScriptWebAppUrl || integrationConfig.googleSheetsUrl) {
+        exportUsersToGoogleSheets(
+          'direct_gsheets_token_active',
+          integrationConfig.googleSheetsUrl,
+          users,
+          integrationConfig.appScriptWebAppUrl
+        );
+      }
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [users, integrationConfig.appScriptWebAppUrl, integrationConfig.googleSheetsUrl]);
 
   // Initial Fetch on Load
   useEffect(() => {
@@ -386,6 +455,24 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             permissions: updatedPerms,
           };
           addLog('Update Role & Hak Akses', `Mengubah role ${u.name} menjadi ${newRole} (Unit: ${updatedUser.unit})`);
+          return updatedUser;
+        }
+        return u;
+      })
+    );
+  };
+
+  const updateUser = (userId: string, updatedData: Partial<UserAccount>) => {
+    setUsers((prev) =>
+      prev.map((u) => {
+        if (u.id === userId) {
+          const updatedPerms = updatedData.permissions || u.permissions;
+          const updatedUser: UserAccount = {
+            ...u,
+            ...updatedData,
+            permissions: updatedPerms,
+          };
+          addLog('Update Pengguna & Akses', `Mengubah akun/role ${updatedUser.name} (${updatedUser.username}) - Role: ${updatedUser.role}`);
           return updatedUser;
         }
         return u;
@@ -559,10 +646,15 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         );
 
         if (index >= 0) {
-          // Update existing asset
+          // Update existing asset safely without overwriting custom photoUrl with empty value
+          const existingPhoto = copy[index].fotoUrl;
+          const importedPhoto = imported.fotoUrl;
+          const finalPhoto = importedPhoto && importedPhoto.trim() ? importedPhoto : existingPhoto;
+
           copy[index] = {
             ...copy[index],
             ...imported,
+            fotoUrl: finalPhoto,
             location: {
               ...copy[index].location,
               ...(imported.location || {}),
@@ -1009,22 +1101,38 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     addLog('Tambah Master Gedung', `Menambahkan Master Gedung baru: ${gedungData.nama}`);
   };
 
-  const markAudited = (assetId: string) => {
-    const today = new Date().toISOString().split('T')[0];
+  const markAudited = (assetId: string, customDate?: string) => {
+    const auditDate = customDate || new Date().toISOString().split('T')[0];
     setAssets((prev) =>
       prev.map((a) => {
         if (a.id === assetId) {
           return {
             ...a,
-            lastAuditedAt: today,
-            auditedBy: 'Alpian Rinaldhi',
+            lastAuditedAt: auditDate,
+            auditedBy: currentUser?.name || 'Alpian Rinaldhi',
           };
         }
         return a;
       })
     );
     const target = assets.find((a) => a.id === assetId);
-    addLog('Stock Opname Audit', `Audit fisik dikonfirmasi untuk aset: ${target?.namaAsset || assetId}`, assetId, target?.namaAsset);
+    addLog('Stock Opname Audit', `Audit fisik dikonfirmasi (${auditDate}) untuk aset: ${target?.namaAsset || assetId}`, assetId, target?.namaAsset);
+  };
+
+  const resetStockOpname = (unitName?: string) => {
+    setAssets((prev) =>
+      prev.map((a) => {
+        if (!unitName || unitName === 'Semua' || a.unit === unitName) {
+          return {
+            ...a,
+            lastAuditedAt: undefined,
+            auditedBy: undefined,
+          };
+        }
+        return a;
+      })
+    );
+    addLog('Stock Opname Reset', `Reset status Stock Opname untuk unit: ${unitName || 'Semua Unit'}`);
   };
 
   const markNotificationRead = (id: string) => {
@@ -1052,6 +1160,7 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         users,
         addUser,
         updateUserRole,
+        updateUser,
         deleteUser,
         integrationConfig,
         setIntegrationConfig,
@@ -1079,6 +1188,7 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addUnit,
         addGedung,
         markAudited,
+        resetStockOpname,
         addLog,
         markNotificationRead,
         clearNotifications,

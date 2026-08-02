@@ -3,6 +3,8 @@ import { useAsset } from '../context/AssetContext';
 import { Asset, UnitName, GedungName, AssetCondition, AssetCategory, AssetStatus, SumberPengadaan } from '../types';
 import { X, Box, Save, ShieldAlert, ShoppingBag, Upload, Camera, Link2, ExternalLink, Copy, Check, FileSpreadsheet, ImageIcon } from 'lucide-react';
 
+import { getDirectImageUrl } from '../utils/imageUtils';
+
 interface AssetFormModalProps {
   assetToEdit?: Asset | null;
   onClose: () => void;
@@ -54,7 +56,7 @@ export const AssetFormModal: React.FC<AssetFormModalProps> = ({ assetToEdit, onC
   const defaultDriveFolder = 'https://drive.google.com/drive/folders/11lZVmWvxVDBZDMUnS8q9mhyruGGhbX-g?usp=sharing';
   const initialFoto = assetToEdit?.fotoUrl || 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=600&auto=format&fit=crop&q=80';
   const [fotoUrl, setFotoUrl] = useState(initialFoto);
-  const [imagePreview, setImagePreview] = useState<string>(initialFoto);
+  const [imagePreview, setImagePreview] = useState<string>(getDirectImageUrl(initialFoto));
   const [driveLink, setDriveLink] = useState<string>(
     initialFoto.includes('drive.google.com')
       ? initialFoto
@@ -69,12 +71,7 @@ export const AssetFormModal: React.FC<AssetFormModalProps> = ({ assetToEdit, onC
       reader.onload = (event) => {
         const result = event.target?.result as string;
         setImagePreview(result);
-        
-        // Generate Google Drive File link representation in the target folder
-        const driveFileId = `11lZVmWvxVDBZDMUnS8q9mhyruGGhbX-g_${Date.now()}`;
-        const generatedDriveUrl = `https://drive.google.com/file/d/${driveFileId}/view?usp=sharing`;
-        setDriveLink(generatedDriveUrl);
-        setFotoUrl(generatedDriveUrl);
+        setFotoUrl(result);
       };
       reader.readAsDataURL(file);
     }
@@ -83,6 +80,9 @@ export const AssetFormModal: React.FC<AssetFormModalProps> = ({ assetToEdit, onC
   const handleDriveLinkChange = (val: string) => {
     setDriveLink(val);
     setFotoUrl(val);
+    if (val.trim()) {
+      setImagePreview(getDirectImageUrl(val));
+    }
   };
 
   const handleCopyDriveLink = () => {
