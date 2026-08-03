@@ -16,13 +16,14 @@ export const StockOpname: React.FC = () => {
   const targetAssets = assets.filter((a) => {
     const matchesUnit = selectedUnit === 'Semua' || a.unit === selectedUnit;
     const matchesCategory = selectedCategory === 'Semua' || a.kategori === selectedCategory;
+    const sq = searchQuery.toLowerCase();
     const matchesSearch =
       !searchQuery.trim() ||
-      a.namaAsset.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.qrCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.assetIdAuto.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.location.ruangan.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.merk.toLowerCase().includes(searchQuery.toLowerCase());
+      (a.namaAsset || '').toLowerCase().includes(sq) ||
+      (a.qrCode || '').toLowerCase().includes(sq) ||
+      (a.assetIdAuto || '').toLowerCase().includes(sq) ||
+      (a.location?.ruangan || '').toLowerCase().includes(sq) ||
+      (a.merk || '').toLowerCase().includes(sq);
 
     return matchesUnit && matchesCategory && matchesSearch;
   });
@@ -37,9 +38,9 @@ export const StockOpname: React.FC = () => {
     const code = scanCode.trim().toLowerCase();
     const found = targetAssets.find(
       (a) =>
-        a.qrCode.toLowerCase() === code ||
-        a.assetIdAuto.toLowerCase() === code ||
-        a.nomorInventaris.toLowerCase() === code
+        (a.qrCode || '').toLowerCase() === code ||
+        (a.assetIdAuto || '').toLowerCase() === code ||
+        (a.nomorInventaris || '').toLowerCase() === code
     );
 
     if (found) {

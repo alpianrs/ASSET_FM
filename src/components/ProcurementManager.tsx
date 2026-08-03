@@ -79,12 +79,13 @@ export const ProcurementManager: React.FC = () => {
   // Filtered assets
   const filteredAssets = assets.filter((asset) => {
     // Search
+    const sq = searchQuery.toLowerCase();
     const matchesSearch =
-      asset.namaAsset.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      asset.unit.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (asset.nomorInvoice && asset.nomorInvoice.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (asset.nomorPO && asset.nomorPO.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (asset.supplier && asset.supplier.toLowerCase().includes(searchQuery.toLowerCase()));
+      (asset.namaAsset || '').toLowerCase().includes(sq) ||
+      (asset.unit || '').toLowerCase().includes(sq) ||
+      (asset.nomorInvoice && asset.nomorInvoice.toLowerCase().includes(sq)) ||
+      (asset.nomorPO && asset.nomorPO.toLowerCase().includes(sq)) ||
+      (asset.supplier && asset.supplier.toLowerCase().includes(sq));
 
     // Status Filter
     const matchesStatus =

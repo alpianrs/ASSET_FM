@@ -33,10 +33,11 @@ export const MaintenanceManager: React.FC = () => {
   const [catatan, setCatatan] = useState('');
 
   const filteredLogs = maintenanceLogs.filter((log) => {
+    const s = searchWO.toLowerCase();
     const matchSearch =
-      log.woNumber.toLowerCase().includes(searchWO.toLowerCase()) ||
-      log.teknisi.toLowerCase().includes(searchWO.toLowerCase()) ||
-      log.catatan.toLowerCase().includes(searchWO.toLowerCase());
+      (log.woNumber || '').toLowerCase().includes(s) ||
+      (log.teknisi || '').toLowerCase().includes(s) ||
+      (log.catatan || '').toLowerCase().includes(s);
     const matchStatus = statusFilter === 'Semua' || log.status === statusFilter;
     return matchSearch && matchStatus;
   });

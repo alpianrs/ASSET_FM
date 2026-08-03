@@ -48,12 +48,13 @@ export const Navbar: React.FC<NavbarProps> = ({
     const q = e.target.value;
     setSearchQuery(q);
     if (q.trim().length > 1) {
+      const lowerQ = q.toLowerCase();
       const filtered = assets.filter(
         (a) =>
-          a.namaAsset.toLowerCase().includes(q.toLowerCase()) ||
-          a.qrCode.toLowerCase().includes(q.toLowerCase()) ||
-          a.nomorInventaris.toLowerCase().includes(q.toLowerCase()) ||
-          a.unit.toLowerCase().includes(q.toLowerCase())
+          (a.namaAsset || '').toLowerCase().includes(lowerQ) ||
+          (a.qrCode || '').toLowerCase().includes(lowerQ) ||
+          (a.nomorInventaris || '').toLowerCase().includes(lowerQ) ||
+          (a.unit || '').toLowerCase().includes(lowerQ)
       );
       setSearchResults(filtered.slice(0, 5));
       setShowResults(true);

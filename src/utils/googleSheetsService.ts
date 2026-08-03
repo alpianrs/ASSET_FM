@@ -151,6 +151,7 @@ export const exportDataToGoogleSheets = async (
     'Penanggung Jawab',
     'Nomor PO / Note',
     'Foto Asset (Link Google Drive)',
+    'History Service AC (JSON)',
   ];
 
   const rows = assets.map((a) => [
@@ -172,6 +173,7 @@ export const exportDataToGoogleSheets = async (
     a.penanggungJawab || '',
     a.nomorPO || '',
     a.fotoUrl || '',
+    a.acWashHistory && a.acWashHistory.length > 0 ? JSON.stringify(a.acWashHistory) : '',
   ]);
 
   const valuesData = [header, ...rows];
@@ -269,7 +271,7 @@ export const importDataFromGoogleSheets = async (
   }
 
   try {
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${cleanId}/values/Daftar%20Aset!A2:Q1000`;
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${cleanId}/values/Daftar%20Aset!A2:S1000`;
 
     const res = await fetch(url, {
       headers: {
@@ -305,6 +307,16 @@ function parseRawRowsToAssets(rawRows: string[][]): Partial<Asset>[] {
     .map((row) => {
       const unitVal = (row[4] as UnitName) || 'SD';
       const gedungVal = (row[5] as GedungName) || 'Arrazi';
+
+      let parsedACWashHistory: any[] | undefined = undefined;
+      if (row[18] && typeof row[18] === 'string' && row[18].trim().startsWith('[')) {
+        try {
+          parsedACWashHistory = JSON.parse(row[18].trim());
+        } catch (e) {
+          parsedACWashHistory = undefined;
+        }
+      }
+
       return {
         id: row[0] ? String(row[0]) : undefined,
         qrCode: row[1] || `LZU-ASSET-${Math.floor(100 + Math.random() * 900)}`,
@@ -329,6 +341,7 @@ function parseRawRowsToAssets(rawRows: string[][]): Partial<Asset>[] {
         penanggungJawab: row[15] || '',
         nomorPO: row[16] || '',
         fotoUrl: row[17] && row[17].trim() ? row[17].trim() : undefined,
+        acWashHistory: parsedACWashHistory,
       };
     });
 }

@@ -254,8 +254,8 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
 
-  // Ref flag to prevent inbound Google Sheets fetch from re-triggering outbound push
-  const isInboundSyncRef = useRef<boolean>(false);
+  // Ref timestamp to prevent inbound Google Sheets fetch from re-triggering outbound push
+  const lastInboundTimeRef = useRef<number>(0);
 
   const syncToGoogleSheetsNow = async (): Promise<boolean> => {
     setIsSyncing(true);
@@ -291,10 +291,12 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  const fetchFromGoogleSheetsNow = async (): Promise<boolean> => {
-    setIsSyncing(true);
+  const fetchFromGoogleSheetsNow = async (isManual: boolean = false): Promise<boolean> => {
+    if (isManual) {
+      setIsSyncing(true);
+    }
     setSyncError(null);
-    isInboundSyncRef.current = true;
+    lastInboundTimeRef.current = Date.now();
     try {
       const importedAssets = await importDataFromGoogleSheets(
         'direct_gsheets_token_active',
@@ -346,10 +348,14 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setLastSyncTime(timeStr);
       return true;
     } catch (err: any) {
-      setSyncError(err?.message || 'Gagal membaca data dari Google Sheets.');
+      if (isManual) {
+        setSyncError(err?.message || 'Gagal membaca data dari Google Sheets.');
+      }
       return false;
     } finally {
-      setIsSyncing(false);
+      if (isManual) {
+        setIsSyncing(false);
+      }
     }
   };
 
@@ -357,8 +363,8 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_assets`, JSON.stringify(assets));
 
-    if (isInboundSyncRef.current) {
-      isInboundSyncRef.current = false;
+    // Skip outbound sync if triggered right after an inbound fetch
+    if (Date.now() - lastInboundTimeRef.current < 4000) {
       return;
     }
 
@@ -390,7 +396,7 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_users`, JSON.stringify(users));
 
-    if (isInboundSyncRef.current) {
+    if (Date.now() - lastInboundTimeRef.current < 4000) {
       return;
     }
 
@@ -408,14 +414,14 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => clearTimeout(timer);
   }, [users, integrationConfig.appScriptWebAppUrl, integrationConfig.googleSheetsUrl]);
 
-  // Initial Fetch & Periodic 45s Background Poll from Google Sheets (2-way sync)
+  // Initial Fetch & Periodic 60s Silent Background Sync from Google Sheets
   useEffect(() => {
     if (integrationConfig.appScriptWebAppUrl) {
-      fetchFromGoogleSheetsNow().catch(() => {});
+      fetchFromGoogleSheetsNow(false).catch(() => {});
 
       const pollInterval = setInterval(() => {
-        fetchFromGoogleSheetsNow().catch(() => {});
-      }, 45000);
+        fetchFromGoogleSheetsNow(false).catch(() => {});
+      }, 60000);
 
       return () => clearInterval(pollInterval);
     }
@@ -522,13 +528,14 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const getAssetByQR = (qrCodeOrId: string) => {
+    if (!qrCodeOrId) return undefined;
     const clean = qrCodeOrId.trim().toLowerCase();
     return assets.find(
       (a) =>
-        a.qrCode.toLowerCase() === clean ||
-        a.assetIdAuto.toLowerCase() === clean ||
-        a.id.toLowerCase() === clean ||
-        a.nomorInventaris.toLowerCase() === clean
+        (a.qrCode || '').toLowerCase() === clean ||
+        (a.assetIdAuto || '').toLowerCase() === clean ||
+        (a.id || '').toLowerCase() === clean ||
+        (a.nomorInventaris || '').toLowerCase() === clean
     );
   };
 
@@ -634,7 +641,7 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       transferHistory: [],
     };
 
-    setAssets((prev) => ensureUniqueAssets([newAsset, ...prev]));
+    setAssets((prev) => ensureUniqueAssets([...prev, newAsset]));
 
     if (statusVerifikasi === 'Menunggu Verifikasi FM') {
       const newNotif: NotificationItem = {
@@ -665,17 +672,32 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         );
 
         if (index >= 0) {
-          // Update existing asset safely without overwriting custom photoUrl with empty value
-          const existingPhoto = copy[index].fotoUrl;
+          const existing = copy[index];
+          const existingPhoto = existing.fotoUrl;
           const importedPhoto = imported.fotoUrl;
           const finalPhoto = importedPhoto && importedPhoto.trim() ? importedPhoto : existingPhoto;
 
+          const finalACWash = (imported.acWashHistory && imported.acWashHistory.length > 0)
+            ? imported.acWashHistory
+            : (existing.acWashHistory || []);
+
+          const finalMaintenance = (imported.maintenanceHistory && imported.maintenanceHistory.length > 0)
+            ? imported.maintenanceHistory
+            : (existing.maintenanceHistory || []);
+
           copy[index] = {
-            ...copy[index],
+            ...existing,
             ...imported,
             fotoUrl: finalPhoto,
+            acWashHistory: finalACWash,
+            maintenanceHistory: finalMaintenance,
+            damageReports: imported.damageReports || existing.damageReports || [],
+            loanHistory: imported.loanHistory || existing.loanHistory || [],
+            transferHistory: imported.transferHistory || existing.transferHistory || [],
+            documents: imported.documents || existing.documents || [],
+            statusVerifikasi: imported.statusVerifikasi || existing.statusVerifikasi || 'Diverifikasi FM',
             location: {
-              ...copy[index].location,
+              ...existing.location,
               ...(imported.location || {}),
             },
           };
@@ -717,7 +739,8 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             },
             kondisi: imported.kondisi || 'Baik',
             status: imported.status || 'Aktif',
-            maintenanceHistory: [],
+            acWashHistory: imported.acWashHistory || [],
+            maintenanceHistory: imported.maintenanceHistory || [],
             damageReports: [],
             loanHistory: [],
             transferHistory: [],

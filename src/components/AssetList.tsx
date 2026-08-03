@@ -52,13 +52,17 @@ export const AssetList: React.FC<AssetListProps> = ({
 
   // Filtering logic
   const filteredAssets = assets.filter((a) => {
+    const s = search.toLowerCase();
     const matchSearch =
       search === '' ||
-      a.namaAsset.toLowerCase().includes(search.toLowerCase()) ||
-      a.qrCode.toLowerCase().includes(search.toLowerCase()) ||
-      a.nomorInventaris.toLowerCase().includes(search.toLowerCase()) ||
-      a.serialNumber.toLowerCase().includes(search.toLowerCase()) ||
-      a.picAsset.toLowerCase().includes(search.toLowerCase());
+      (a.namaAsset || '').toLowerCase().includes(s) ||
+      (a.qrCode || '').toLowerCase().includes(s) ||
+      (a.nomorInventaris || '').toLowerCase().includes(s) ||
+      (a.serialNumber || '').toLowerCase().includes(s) ||
+      (a.picAsset || '').toLowerCase().includes(s) ||
+      (a.merk || '').toLowerCase().includes(s) ||
+      (a.model || '').toLowerCase().includes(s) ||
+      (a.assetIdAuto || '').toLowerCase().includes(s);
 
     const matchUnit = selectedUnit === 'Semua' || a.unit === selectedUnit;
     const matchGedung = selectedGedung === 'Semua' || a.location.gedung === selectedGedung;

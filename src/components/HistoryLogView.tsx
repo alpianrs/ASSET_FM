@@ -7,11 +7,15 @@ export const HistoryLogView: React.FC = () => {
   const [searchLog, setSearchLog] = useState('');
 
   const filteredLogs = historyLogs.filter(
-    (log) =>
-      log.action.toLowerCase().includes(searchLog.toLowerCase()) ||
-      log.details.toLowerCase().includes(searchLog.toLowerCase()) ||
-      log.user.toLowerCase().includes(searchLog.toLowerCase()) ||
-      (log.assetName && log.assetName.toLowerCase().includes(searchLog.toLowerCase()))
+    (log) => {
+      const s = searchLog.toLowerCase();
+      return (
+        (log.action || '').toLowerCase().includes(s) ||
+        (log.details || '').toLowerCase().includes(s) ||
+        (log.user || '').toLowerCase().includes(s) ||
+        (log.assetName && log.assetName.toLowerCase().includes(s))
+      );
+    }
   );
 
   return (
