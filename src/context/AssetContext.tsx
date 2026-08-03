@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import {
   Asset,
   MasterGedung,
@@ -254,6 +254,9 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
 
+  // Ref flag to prevent inbound Google Sheets fetch from re-triggering outbound push
+  const isInboundSyncRef = useRef<boolean>(false);
+
   const syncToGoogleSheetsNow = async (): Promise<boolean> => {
     setIsSyncing(true);
     setSyncError(null);
@@ -291,6 +294,7 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const fetchFromGoogleSheetsNow = async (): Promise<boolean> => {
     setIsSyncing(true);
     setSyncError(null);
+    isInboundSyncRef.current = true;
     try {
       const importedAssets = await importDataFromGoogleSheets(
         'direct_gsheets_token_active',
@@ -349,11 +353,16 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
-  // Persistence & Auto-Sync to Google Sheets when assets change
+  // Persistence & Auto-Sync to Google Sheets when assets change locally
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_assets`, JSON.stringify(assets));
 
-    // Debounced automatic background sync to Google Sheets
+    if (isInboundSyncRef.current) {
+      isInboundSyncRef.current = false;
+      return;
+    }
+
+    // Debounced automatic background push to Google Sheets on local user edits
     const timer = setTimeout(() => {
       if (integrationConfig.appScriptWebAppUrl || integrationConfig.googleSheetsUrl) {
         syncAssetsToGoogleSheet(
@@ -372,14 +381,18 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             console.warn('Background auto-sync warning:', e);
           });
       }
-    }, 1500);
+    }, 2000);
 
     return () => clearTimeout(timer);
   }, [assets, integrationConfig.appScriptWebAppUrl, integrationConfig.googleSheetsUrl]);
 
-  // Persistence & Auto-Sync Users to Google Sheets when users change
+  // Persistence & Auto-Sync Users to Google Sheets when users change locally
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_users`, JSON.stringify(users));
+
+    if (isInboundSyncRef.current) {
+      return;
+    }
 
     const timer = setTimeout(() => {
       if (integrationConfig.appScriptWebAppUrl || integrationConfig.googleSheetsUrl) {
@@ -390,15 +403,21 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           integrationConfig.appScriptWebAppUrl
         );
       }
-    }, 1500);
+    }, 2000);
 
     return () => clearTimeout(timer);
   }, [users, integrationConfig.appScriptWebAppUrl, integrationConfig.googleSheetsUrl]);
 
-  // Initial Fetch on Load
+  // Initial Fetch & Periodic 45s Background Poll from Google Sheets (2-way sync)
   useEffect(() => {
     if (integrationConfig.appScriptWebAppUrl) {
       fetchFromGoogleSheetsNow().catch(() => {});
+
+      const pollInterval = setInterval(() => {
+        fetchFromGoogleSheetsNow().catch(() => {});
+      }, 45000);
+
+      return () => clearInterval(pollInterval);
     }
   }, [integrationConfig.appScriptWebAppUrl]);
 
@@ -674,7 +693,7 @@ export const AssetProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             tipe: '',
             model: imported.model || '',
             serialNumber: '',
-            fotoUrl: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&auto=format&fit=crop&q=80',
+            fotoUrl: imported.fotoUrl || 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&auto=format&fit=crop&q=80',
             unit: imported.unit || 'SD',
             departemen: 'General',
             penanggungJawab: imported.penanggungJawab || 'Koordinator Unit',
